@@ -1,0 +1,97 @@
+/* USB0 of the C6745/OMAP-L137 (TI wrapper + Mentor MUSBMHDRC + CPPI 4.1 DMA and queue
+   manager) in peripheral mode, plus a scripted full-speed host that enumerates the
+   device and exchanges USB-MIDI (SysEx) with it. See README "USB". */
+#ifndef C6X_USB_H
+#define C6X_USB_H
+#include <stdint.h>
+#include <stdio.h>
+
+struct c6x_sys;
+
+#define USB_NEP 5
+#define USB_NQ 64
+#define USB_QDEPTH 4096
+#define USB_FIFO 1024
+
+typedef struct {
+    uint16_t txmaxp, txcsr, rxmaxp, rxcsr, count;
+    uint8_t txtype, txinterval, rxtype, rxinterval;
+    uint8_t fifosize;            /* value written to endpoint FIFO size register */
+    uint8_t rx[USB_FIFO];        /* host -> device bytes waiting in the FIFO */
+    uint32_t rxn, rxpos;
+    uint8_t tx[USB_FIFO];        /* device -> host bytes loaded by the CPU */
+    uint32_t txn;
+    /* CPPI Tx packet being sent on this endpoint */
+    uint32_t tx_desc, tx_len, tx_off;
+} usb_ep;
+
+typedef struct {
+    uint32_t ring[USB_QDEPTH];
+    uint32_t head, n;
+} usb_queue;
+
+typedef struct {
+    uint8_t data[2600];
+    int len;
+    uint64_t at;                 /* wall cycle when it may be sent */
+    int wait;                    /* send only after the device answered the previous one */
+} usb_msg;
+
+typedef struct c6x_usb {
+    int enabled;                 /* -usb: a host is attached */
+    /* wrapper */
+    uint32_t ctrlr, mode, intsrc, intmsk;
+    int line;                    /* interrupt line level last reported */
+    /* MUSB core */
+    uint8_t faddr, power, index, testmode, devctl, intrusbe;
+    uint16_t intrtx, intrrx, intrtxe, intrrxe;
+    uint8_t intrusb;
+    uint16_t frame;
+    uint8_t core_misc[0x100];    /* plain storage for registers without side effects */
+    usb_ep ep[USB_NEP];
+    /* CPPI 4.1 */
+    uint32_t dma[0x400];         /* 0x1000..0x1FFF words */
+    usb_queue q[USB_NQ];
+
+    /* host state */
+    uint64_t next_tick, next_sof, connect_at;
+    int state;                   /* see usb.c */
+    int ctl_step;                /* enumeration script position */
+    uint8_t setup[8];
+    uint8_t ctl_buf[512];
+    uint8_t ctl_out[512];        /* host -> device control data stage */
+    int ctl_len, ctl_phase, ctl_wait, ctl_out_len, ctl_out_sent;
+    uint64_t ctl_deadline;
+    int addr, configured;
+    int ep_out, ep_in, mps_out, mps_in;
+    /* UAC1 isochronous IN capture */
+    int iso_ep, iso_mps, iso_interval, iso_alt, iso_enabled;
+    uint64_t iso_at;
+    FILE *iso_wav;
+    uint32_t iso_packets, iso_bytes, iso_underruns;
+    uint8_t devdesc[18], cfgdesc[256];
+    int cfglen;
+    /* MIDI */
+    usb_msg *out;                /* grows as messages are queued (a full update is ~1800) */
+    int nout, outpos, outcap;
+    uint8_t outbuf[16384];       /* USB-MIDI event bytes waiting for bulk OUT */
+    int outbuf_n;
+    uint8_t sysex[4096];
+    int sysex_n;
+    int nin;                     /* complete messages received */
+    int awaiting, wait_nin;      /* waiting for an answer before the next "wait" message */
+    uint64_t wait_deadline;
+    FILE *log, *midilog;
+} c6x_usb;
+
+void usb_init(struct c6x_sys *s);
+uint32_t usb_read(struct c6x_sys *s, uint32_t addr, int size);
+void usb_write(struct c6x_sys *s, uint32_t addr, int size, uint32_t val);
+void usb_sync(struct c6x_sys *s);
+uint64_t usb_next_event(struct c6x_sys *s);
+int usb_queue_sysex(struct c6x_sys *s, uint64_t at, const char *hex, int wait);
+int usb_iso_wav_open(struct c6x_sys *s, const char *path);
+void usb_iso_wav_close(struct c6x_sys *s);
+void usb_report(struct c6x_sys *s, FILE *f);
+
+#endif

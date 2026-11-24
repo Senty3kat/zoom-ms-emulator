@@ -1,0 +1,54 @@
+# Compiled binaries 
+build/  
+*.exe  
+*.o  
+*.obj  
+  
+# Emulator logs (generated at runtime)  
+*.txt  
+*.log  
+*.wav  
+*.png  
+*.bin  
+*.f32  
+*.zip  
+*.bak  
+  
+# Firmware images and user firmware (not included in repository)  
+*.ZDL  
+fw*.bin  
+emu_/  
+run_/  
+  
+# Local build configuration  
+local_settings.json  
+  
+# IDE  
+.vscode/  
+.idea/  
+*.swp  
+*.swo  
+  
+# OS  
+.DS_Store  
+Thumbs.db 
+__pycache__/ 
+
+
+# Historical research notes and working logs (not part of the product)
+FINDINGS.md
+GPIO_HOOKS.md
+FINDINGS.md.bak-*
+cb*.md
+gp*.md
+_distill*.py
+_distill*.txt
+_scan*.py
+_find*.py
+_gpio_export*.txt
+_ev49.txt
+_all_zip_hits.txt
+_zoom000_hits.txt
+
+# data table used by tests/intr
+!tests/intr/names.txt
