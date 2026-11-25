@@ -899,6 +899,14 @@ int sys_load_ais(c6x_sys *s, const char *path)
     return 0;
 }
 
+/* AIS JumpClose enters with whatever B15 the boot ROM happened to leave. The
+   model resets registers to zero, which hides a missing stack setup in CFW.
+   -stack lets a test provide the real stack pointer from the image linker. */
+void sys_set_jump_stack(c6x_sys *s, uint32_t b15)
+{
+    if (b15) s->cpu.r[1][15] = b15;
+}
+
 /* ---------------- clocks and SDRAM ---------------- */
 /* PLL0 as in the DA830 / OMAP-L137 family (Linux da830 clock tree, da8xx-cfgchip):
    VCO = 24 MHz x (PLLM+1) / (PREDIV+1), allowed 300..600 MHz; PLLOUT = VCO / (POSTDIV+1);

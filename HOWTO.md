@@ -286,6 +286,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-w LO HI` | чтения периферии в диапазоне адресов | `mmio.txt` |
 | `-ww LO HI ТАКТ` | все записи в память в диапазоне с такта ТАКТ | `ww.txt` |
 | `-dump АДРЕС ДЛИНА` | показать память в конце | консоль |
+| `-stack АДР` | задать `B15` сразу после AIS JumpClose; например `C00F7000` для bootmini DU6 | консоль |
 | без `-q` | регистры CPU, 20 самых «горячих» адресов, обращения к периферии | консоль |
 
 ### Новые диагностические ключи
@@ -678,6 +679,7 @@ overhead, not useful effect work.
 | `-w LO HI` | peripheral reads in an address range | `mmio.txt` |
 | `-ww LO HI CYCLE` | all memory writes in a range from CYCLE | `ww.txt` |
 | `-dump ADDR LEN` | show memory at the end | console |
+| `-stack ADDR` | set `B15` right after AIS JumpClose, e.g. `C00F7000` for DU6 bootmini | console |
 | without `-q` | CPU registers, 20 hottest addresses, peripheral accesses | console |
 
 ### New diagnostic options

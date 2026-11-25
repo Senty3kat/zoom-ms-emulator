@@ -50,6 +50,7 @@
      -p ADDR             probe: print A4/B4/A6/B6/B3 at packet ADDR (probe.txt)
      -b ADDR             stop at packet ADDR
      -dump ADDR LEN      hex dump at the end
+     -stack ADDR         set B15 at AIS JumpClose (e.g. C00F7000 for DU6 bootmini)
      -q                  short report */
 #include <stdio.h>
 #include <stdlib.h>
@@ -230,6 +231,7 @@ int main(int argc, char **argv)
     if (argc < 2) { fprintf(stderr, "usage: c6xboot DIR/129_main_OS.bin [options]  (see source header; -adclog = trace ADC SPI1 polls)\n"); return 1; }
     c6x_sys *s = sys_create();
     g_sys = s;
+    uint32_t jump_stack = 0;
     if (sys_load_ais(s, argv[1])) { fprintf(stderr, "load failed: %s\n", argv[1]); return 1; }
     /* DSP clock: from the image's PLL setup, -mhz overrides */
     for (int i = 2; i + 1 < argc; i++)
@@ -254,6 +256,7 @@ int main(int argc, char **argv)
     for (int i = 2; i < argc; i++) {
         const char *a = argv[i];
         if (!strcmp(a, "-s") && i + 1 < argc) secs = atof(argv[++i]);
+        else if (!strcmp(a, "-stack") && i + 1 < argc) jump_stack = (uint32_t)strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-t") && i + 1 < argc) trace_from = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-tl") && i + 1 < argc) trace_len = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-m")) s->logf = fopen("mmio.txt", "w");
@@ -448,6 +451,7 @@ int main(int argc, char **argv)
         else if (a[0] == '-') { fprintf(stderr, "unknown option %s\n", a); return 1; }
         else secs = atof(a) / 300.0;  /* legacy: Mcycles */
     }
+    sys_set_jump_stack(s, jump_stack);
     if (s->cpu.cache) {
         if (g_cachepen[0] >= 0) s->cpu.cache->p_l1d_l2sram = g_cachepen[0];
         if (g_cachepen[1] >= 0) s->cpu.cache->p_l1d_l2c = g_cachepen[1];

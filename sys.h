@@ -140,6 +140,7 @@ typedef struct c6x_sys {
 
 c6x_sys *sys_create(void);
 int sys_load_ais(c6x_sys *s, const char *path);
+void sys_set_jump_stack(c6x_sys *s, uint32_t b15);   /* -stack: B15 after JumpClose */
 int sys_load_flash_parts(c6x_sys *s, const char *dir);
 /* clocks from PLL0 + CFGCHIP3, SDRAM timings from EMIFB; updates the cache model */
 void sys_clock_rates(c6x_sys *s, double *vco, double *core, double *emif);
