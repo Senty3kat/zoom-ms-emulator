@@ -351,9 +351,11 @@ CFW может читать их оттуда, не трогая SPI1.
 
 ## 12. Чего эмулятор пока не умеет
 
-- USB только full-speed и только то, что нужно MIDI: управляющие запросы с данными от хоста
-  (OUT data stage), изохронные точки и режим хоста не моделируются. Запись во флеш
-  мгновенная, поэтому обновление идёт быстрее, чем на педали (6 с против 24).
+- USB моделирует full-speed устройство и сценарный хост. Есть OUT data stage с ожиданием
+  `SERV_RXPKTRDY`, UAC `GET_CUR`/`SET_CUR`, изохронный IN и запись потока через `-usbwav`.
+  Нет полноценного host-режима USB и полной обработки всех UAC class requests со стороны
+  прошивки. Запись во флеш мгновенная, поэтому обновление идёт быстрее, чем на педали
+  (6 с против 24).
 - Задержки кэша и SDRAM откалиброваны по железу на CFW 5.38 при 408 МГц
   (`-cachepen 5:3:385:40`, L2 и SDRAM в пределах 1–3% от педали). Для других частот
   и прошивок штрафы пересчитывать; смотрите на разницу между вариантами, а не на
@@ -742,10 +744,11 @@ can read them there without touching SPI1.
 
 ## 12. What the emulator cannot do yet
 
-- USB is full-speed only and only what MIDI needs: control requests with
-  host data (OUT data stage), isochronous endpoints and host mode are not
-  modelled. Flash writes are instant, so updates run faster than on the pedal
-  (6 s versus 24).
+- USB models a full-speed device plus a scripted host. OUT data stage with
+  `SERV_RXPKTRDY`, UAC `GET_CUR`/`SET_CUR`, isochronous IN and `-usbwav` capture
+  are supported. A full USB host mode and complete firmware-side handling of
+  every UAC class request are not modelled. Flash writes are instant, so updates
+  run faster than on the pedal (6 s versus 24).
 - Cache and SDRAM delays are calibrated on hardware with CFW 5.38 at 408 MHz
   (`-cachepen 5:3:385:40`, L2 and SDRAM within 1-3% of the pedal). For other
   frequencies and firmwares the penalties must be recalculated; compare variants

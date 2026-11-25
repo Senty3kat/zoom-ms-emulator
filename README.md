@@ -251,9 +251,11 @@ SDRAM 16 бит, CL3, 4 банка, страница 256 слов): 72 такт�
   EDMA-передач счётчик `n_dma_snoop` дал 0 попаданий в кэшированные строки L1D.
   Данные в модели всегда свежие; если появится CFW с EDMA в L2 SRAM, счётчик покажет
   это сразу (см. `-cachelog`).
-- **USB** — только устройство full-speed и то, что нужно MIDI: нет OUT data stage в EP0,
-  изохронных точек, режима хоста. Запись во флеш мгновенная, поэтому обновление идёт
-  быстрее, чем на педали.
+- **USB** — эмулируется full-speed устройство и сценарный хост. Есть EP0 OUT data stage с
+  ожиданием `SERV_RXPKTRDY`, UAC `GET_CUR`/`SET_CUR`, изохронный IN и запись потока через
+  `-usbwav`. Нет полноценного host-режима USB и полной обработки всех UAC class requests
+  со стороны прошивки. Запись во флеш мгновенная, поэтому обновление идёт быстрее, чем
+  на педали.
 - Номера событий таймеров и GPIO, кроме проверенных (EDMA = 8, TIMER64P1 = 40,
   GPIO bank 1 = 41, USB0 = 19), взяты по аналогии.
 - Уровни ног GPIO, отданных другой периферии, читаются из `-gpio`/значений по умолчанию,
@@ -595,9 +597,11 @@ The TI SPRUFE8B manual is a Texas Instruments document, not included in the repo
   1.4 million EDMA transfers the `n_dma_snoop` counter found 0 hits in cached L1D
   lines. Model data is always fresh; a CFW that performs EDMA into L2 SRAM will be
   caught by the counter immediately (see `-cachelog`).
-- **USB** is full-speed device mode and only what MIDI needs: no EP0 OUT data
-  stage, no isochronous endpoints, no host mode. Flash writes are instant, so
-  updates run faster than on the pedal.
+- **USB** models a full-speed device plus a scripted host. EP0 OUT data stage with
+  `SERV_RXPKTRDY`, UAC `GET_CUR`/`SET_CUR`, isochronous IN and `-usbwav` capture are
+  supported. A full USB host mode and complete firmware-side handling of every UAC
+  class request are not modelled. Flash writes are instant, so updates run faster
+  than on the pedal.
 - Timer and GPIO event numbers, apart from the verified ones (EDMA = 8,
   TIMER64P1 = 40, GPIO bank 1 = 41, USB0 = 19), are by analogy.
 - GPIO pins given to other peripherals are read from `-gpio`/defaults,
