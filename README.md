@@ -56,7 +56,7 @@ build/c6xboot.exe run/cfw/129_main_OS.bin -s 6 -q -sysex 5000:F07E000601F7
 Ключи: `-s СЕК`, `-press МС:ПИН[:ДЛИТ[:УРОВЕНЬ]]`, `-in МС:ПИН:УРОВЕНЬ`,
 `-turn МС:ПИН_A:ПИН_B:ШАГИ`, `-snap МС:файл.png` (только раньше `-s`), `-lcd файл.png`, `-sine ГЦ АМПЛ`,
 `-out файл.wav`, `-gpio ПАРА HEX`, `-fb файл.bin` (кадр 1024 Б: 8 страниц по 128 колонок, бит 0 — верхний пиксель),
-`-adc N` (батарея), `-mhz`, `-nocache`, `-flashfast` (без задержек флеша), `-emif МГЦ`, `-stack АДР` (задать `B15` после AIS JumpClose); USB: `-usb`, `-usbwav ФАЙЛ`, `-sysex МС:HEX`,
+`-adc N` (батарея), `-mhz`, `-nocache`, `-flashfast` (без задержек флеша), `-emif МГЦ`, `-stack АДР` (задать `B15` после AIS JumpClose), `-cachejump` (инвалидировать кэш после JumpClose); USB: `-usb`, `-usbwav ФАЙЛ`, `-sysex МС:HEX`,
 `-midifile ФАЙЛ`, `-saveflash ФАЙЛ`. `-usbwav` пишет захваченный изохронный поток UAC в WAV 44,1 кГц / 16 бит / стерео. Отладка: `-t ТАКТ [-tl N]` — трасса команд и
 записей регистров (`trace.txt`); `-p АДРЕС` — зонд (A4/B4/A6/B6/B3 при входе в
 пакет, `probe.txt`) и останов на этом адресе; `-b АДРЕС` — останов; `-m` — журнал записей MMIO; `-w LO HI` —
@@ -391,8 +391,9 @@ Options: `-s SEC`, `-press MS:PIN[:DURATION[:LEVEL]]`, `-in MS:PIN:LEVEL`,
 `-turn MS:PIN_A:PIN_B:STEPS`, `-snap MS:file.png` (before `-s`), `-lcd file.png`, `-sine HZ AMP`,
 `-out file.wav`, `-gpio PAIR HEX`, `-fb file.bin` (1024-byte frame:
 8 pages of 128 columns, bit 0 is the top pixel), `-adc N` (battery), `-mhz`, `-nocache`, `-flashfast` (no flash delays), `-emif MHZ`, `-stack ADDR`
-(set `B15` after AIS JumpClose); USB: `-usb`, `-sysex MS:HEX`, `-midifile FILE`,
-`-usbwav FILE` (UAC isochronous IN capture), `-saveflash FILE`. Debug: `-t CYCLE [-tl N]`
+(set `B15` after AIS JumpClose), `-cachejump` (invalidate caches after JumpClose);
+USB: `-usb`, `-sysex MS:HEX`, `-midifile FILE`, `-usbwav FILE` (UAC isochronous IN capture),
+`-saveflash FILE`. Debug: `-t CYCLE [-tl N]`
 (instruction and register-write trace, `trace.txt`); `-p ADDR` (probe:
 A4/B4/A6/B6/B3 on packet entry, `probe.txt`, and stop at that address); `-b ADDR` (stop); `-m` (MMIO write
 log); `-w LO HI` (MMIO reads); `-ww LO HI CYCLE` (RAM writes with PC, `ww.txt`);

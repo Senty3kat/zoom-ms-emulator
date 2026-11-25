@@ -52,6 +52,7 @@ void cache_init(c6x_cache *k, double cpu_mhz, double emif_mhz);
 void cache_set_clocks(c6x_cache *k, double cpu_mhz, double emif_mhz, int t_rcd, int t_cl, int t_rp);
 void cache_set_firmware_defaults(c6x_cache *k);   /* MS-50G/60B/70CDR boot config */
 void cache_cfg_write(c6x_cache *k, uint32_t addr, uint32_t val);   /* 0x0184xxxx */
+void cache_invalidate_all(c6x_cache *k);   /* L1DWBINV + L2WBINV + L1PINV, without changing config */
 uint32_t cache_fetch(c6x_cache *k, uint32_t addr);
 uint32_t cache_read(c6x_cache *k, uint32_t addr, int size);
 uint32_t cache_write(c6x_cache *k, uint32_t addr, int size);

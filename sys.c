@@ -907,6 +907,14 @@ void sys_set_jump_stack(c6x_sys *s, uint32_t b15)
     if (b15) s->cpu.r[1][15] = b15;
 }
 
+/* AIS SectionLoad changes memory while the cache model keeps its old tags.
+   Real bootmini invalidates L1D/L2/L1P before calling C. -cachejump applies the
+   same operation at the model entry so stale lines cannot hide that dependency. */
+void sys_set_jump_cache(c6x_sys *s, int invalidate)
+{
+    if (invalidate) cache_invalidate_all(&s->cache);
+}
+
 /* ---------------- clocks and SDRAM ---------------- */
 /* PLL0 as in the DA830 / OMAP-L137 family (Linux da830 clock tree, da8xx-cfgchip):
    VCO = 24 MHz x (PLLM+1) / (PREDIV+1), allowed 300..600 MHz; PLLOUT = VCO / (POSTDIV+1);

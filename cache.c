@@ -286,6 +286,14 @@ static void l1p_range(c6x_cache *k, uint32_t lo, uint32_t hi)
     k->last_fetch = 1;
 }
 
+void cache_invalidate_all(c6x_cache *k)
+{
+    if (!k) return;
+    l1d_range(k, 0, ~0u, OP_WB | OP_INV);
+    l2_range(k, 0, ~0u, OP_WB | OP_INV);
+    l1p_range(k, 0, ~0u);
+}
+
 void cache_cfg_write(c6x_cache *k, uint32_t addr, uint32_t v)
 {
     static uint32_t bar[0x50 / 4];
