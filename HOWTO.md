@@ -296,7 +296,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-cachepen P1:P2:P3:P4` | переопределить штрафы L1D/L2/SDRAM; для CFW 5.38 на 408 МГц — `5:3:385:40` | stderr |
 | `-dma` | каждая EDMA-передача: такт, канал, SRC/DST, размер | `dma_log.txt` |
 | `-spi` | каждое слово SPI0: устройство, PC, формат, фактический SCK | `spi_log.txt` |
-| `-spilimit LCD:FLASH` | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку | stderr |
+| `-spilimit LCD:FLASH` | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку. Рекомендуется явно задавать `1:50`: при 408 МГц со стоковыми делителями флеш SPI0 может получить 68 МГц, а по умолчанию эмулятор не считает это отказом | stderr |
 | `-gpiolog` | все изменения ног GPIO со временем и PC | `gpio_log.txt` |
 | `-prof T1:T2` | гистограмма PC только в окне времени | stdout |
 | `-audioload` | доля не-idle циклов в аудио-диспетчере L2 и разбивка по адресам аудиофункций | stdout |
@@ -688,7 +688,7 @@ overhead, not useful effect work.
 | `-cachepen P1:P2:P3:P4` | override L1D/L2/SDRAM penalties; for CFW 5.38 at 408 MHz — `5:3:385:40` | stderr |
 | `-dma` | every EDMA transfer: cycle, channel, SRC/DST, size | `dma_log.txt` |
 | `-spi` | every SPI0 word: device, PC, format, actual SCK | `spi_log.txt` |
-| `-spilimit LCD:FLASH` | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check | stderr |
+| `-spilimit LCD:FLASH` | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check. Recommended explicitly: at 408 MHz with stock dividers SPI0 flash can reach 68 MHz, while the emulator does not treat this as a failure by default | stderr |
 | `-gpiolog` | all GPIO pin changes with time and PC | `gpio_log.txt` |
 | `-prof T1:T2` | PC histogram only inside a time window | stdout |
 | `-audioload` | non-idle cycle share inside the L2 audio dispatcher, split by audio function address | stdout |

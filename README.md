@@ -77,7 +77,7 @@ build/c6xboot.exe path/to/firmware/129_main_OS.bin -s 3 -q -flashfast \
 |---|---|---|
 | `-dma` | `dma_log.txt` | каждая EDMA-передача: такт, канал, SRC/DST, размер |
 | `-spi` | `spi_log.txt` | каждое слово SPI0: устройство, PC, формат, фактический SCK |
-| `-spilimit LCD:FLASH` | stderr | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку |
+| `-spilimit LCD:FLASH` | stderr | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку. Рекомендуется явно задавать `1:50`: при разгоне до 408 МГц со стоковыми делителями SPI0 может дать 68 МГц на флеше, а эмулятор по умолчанию не считает это отказом |
 | `-gpiolog` | `gpio_log.txt` | все изменения ног GPIO со временем и PC |
 | `-cachelog [T1:T2]` | `cache_log.txt` | задержки кэша и попадания EDMA в кэшированную строку |
 | `-cachepen P1:P2:P3:P4` | stderr | переопределить штрафы L1D/L2/SDRAM; для 70CDR: `5:3:385:40` |
@@ -411,7 +411,7 @@ build/c6xboot.exe path/to/firmware/129_main_OS.bin -s 3 -q -flashfast \
 |---|---|---|
 | `-dma` | `dma_log.txt` | every EDMA transfer: cycle, channel, SRC/DST, size |
 | `-spi` | `spi_log.txt` | every SPI0 word: device, PC, format, actual SCK |
-| `-spilimit LCD:FLASH` | stderr | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check |
+| `-spilimit LCD:FLASH` | stderr | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check. Recommended explicitly: at 408 MHz with stock dividers SPI0 can reach 68 MHz on flash, while the emulator does not treat this as a hardware failure by default |
 | `-gpiolog` | `gpio_log.txt` | all GPIO pin changes with time and PC |
 | `-cachelog [T1:T2]` | `cache_log.txt` | cache stalls and EDMA hits on cached lines |
 | `-cachepen P1:P2:P3:P4` | stderr | override L1D/L2/SDRAM penalties; for 70CDR: `5:3:385:40` |
