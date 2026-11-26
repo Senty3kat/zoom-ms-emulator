@@ -203,6 +203,24 @@ static inline u32 ld_un(c6x_cpu *c, u32 a)
     return mem_rd(c->mem, a, 1) | (mem_rd(c->mem, a + 1, 1) << 8) | (mem_rd(c->mem, a + 2, 1) << 16) | (mem_rd(c->mem, a + 3, 1) << 24);
 }
 
+static void stw_trace(c6x_cpu *c, const c6x_insn *in, u32 addr, u32 v)
+{
+    if (!c->stwtracef || addr < c->stw_base || addr >= c->stw_end) return;
+    u32 off = addr - c->stw_base;
+    const char *side = off < 32 ? "left" : "right";
+    int idx = (int)((off & 31u) / 4u);
+    float f;
+    memcpy(&f, &v, 4);
+    char src[8] = "-";
+    if (in->op[0].kind == OPK_REG)
+        snprintf(src, sizeof src, "%c%d", in->op[0].side ? 'B' : 'A', in->op[0].reg);
+    fprintf(c->stwtracef,
+            "%10llu pc=%08X stw %s[%d] addr=%08X off=%02X src=%s val=%08X float=%g%s\n",
+            (unsigned long long)cpu_now(c), in->addr, side, idx, addr, off, src, v,
+            (double)f, v == 0 ? " ZERO" : "");
+    c->stw_writes++;
+}
+
 static void store(c6x_cpu *c, u32 addr, int size, u32 lo, u32 hi)
 {
     if (c->cache) { c->cache->pc = c->cr[CR_PCE1]; c->cache->cycle = c->cycle; cache_write(c->cache, addr, size); }
@@ -1012,6 +1030,7 @@ void exec_insn(c6x_cpu *c, const c6x_insn *in)
         u32 v = V(0);
         u32 ad = mem_addr(c, in, OP(1), size);
         if (sem != S_STNW) ad &= ~(u32)(size - 1);
+        if (sem == S_STW) stw_trace(c, in, ad, v);
         store(c, ad, sem == S_STNW ? 5 : size, v, 0);
         return;
     }

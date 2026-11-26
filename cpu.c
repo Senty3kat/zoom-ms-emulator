@@ -54,6 +54,41 @@ void cpu_reset(c6x_cpu *c, uint32_t pc)
     c->idle = 0;
 }
 
+FILE *cpu_stwtrace_open(c6x_cpu *c, const char *spec)
+{
+    if (!spec || !*spec) return NULL;
+    char path[600];
+    uint32_t base = C6X_STW_BASE_DEFAULT, len = C6X_STW_LEN_DEFAULT;
+    const char *comma = strrchr(spec, ',');
+    if (comma) {
+        size_t n = (size_t)(comma - spec);
+        if (!n || n >= sizeof path) { fprintf(stderr, "stwtrace: bad file in %s\n", spec); return NULL; }
+        memcpy(path, spec, n); path[n] = 0;
+        const char *colon = strchr(comma + 1, ':');
+        if (!colon) { fprintf(stderr, "stwtrace: need FILE[,ADDR:LEN], got %s\n", spec); return NULL; }
+        char *end;
+        unsigned long long b = strtoull(comma + 1, &end, 16);
+        if (end == comma + 1 || end != colon) { fprintf(stderr, "stwtrace: bad address in %s\n", spec); return NULL; }
+        unsigned long long l = strtoull(colon + 1, &end, 0);
+        if (end == colon + 1 || *end || !l || b + l > 0x100000000ULL) {
+            fprintf(stderr, "stwtrace: bad length in %s\n", spec); return NULL;
+        }
+        base = (uint32_t)b; len = (uint32_t)l;
+    } else {
+        if (snprintf(path, sizeof path, "%s", spec) >= (int)sizeof path) {
+            fprintf(stderr, "stwtrace: file name too long\n"); return NULL;
+        }
+    }
+    FILE *f = fopen(path, "w");
+    if (!f) { perror(path); return NULL; }
+    c->stwtracef = f;
+    c->stw_base = base;
+    c->stw_end = base + len;
+    c->stw_writes = 0;
+    fprintf(f, "# cycle pc stw side[index] addr off src val float\n");
+    return f;
+}
+
 /* ---------------- control registers ---------------- */
 uint32_t cpu_rd_ctrl(c6x_cpu *c, int id)
 {

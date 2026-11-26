@@ -31,6 +31,7 @@
      -dma                log EDMA transfers to dma_log.txt
      -spi                log SPI0 words, device and SCK to spi_log.txt
      -flashlog           log SPI flash program/erase transactions to flash_log.txt
+     -stwtrace FILE[,ADDR:LEN]  trace STW writes into the output buffer (default 11F04100:40)
      -spilimit LCD:FLASH warn when actual SPI0 SCK exceeds these MHz (0 = off)
      -loadflash FILE     load a saved 4 MB flash image before the run
      -gpiolog            log all GPIO pin changes to gpio_log.txt
@@ -85,6 +86,7 @@ static int g_mmiohist;
 static const char *g_loadflash;
 static char g_otacheck_path[512]; static int g_otacheck_slot = -1;
 static int g_oc_warned;
+static const char *g_stwtrace;
 
 /* -audioload: cycle-accurate cost of the L2 ZDL dispatcher calls */
 typedef struct { uint32_t addr; uint64_t calls, cycles; } audiorec;
@@ -387,6 +389,8 @@ int main(int argc, char **argv)
             s->spilf = fopen("spi_log.txt", "w");
         } else if (!strcmp(a, "-flashlog")) {
             s->flashlogf = fopen("flash_log.txt", "w");
+        } else if (!strcmp(a, "-stwtrace") && i + 1 < argc) {
+            g_stwtrace = argv[++i];
         } else if (!strcmp(a, "-spilimit") && i + 1 < argc) {
             double lcd = 0, flash = 0;
             if (sscanf(argv[++i], "%lf:%lf", &lcd, &flash) == 2) {
@@ -526,6 +530,7 @@ int main(int argc, char **argv)
     s->cpu.on_bp = on_bp;
     s->on_clock = on_clock;
     g_total = MS(secs * 1000);
+    if (g_stwtrace && !cpu_stwtrace_open(&s->cpu, g_stwtrace)) return 1;
     static hot hist[1 << 16];
     uint64_t win_c0 = 0, win_i0 = 0, win_samples = 0, win_idle = 0;
     uint64_t step = 997;
@@ -672,6 +677,12 @@ int main(int argc, char **argv)
     if (s->dmalf) fclose(s->dmalf);
     if (s->spilf) fclose(s->spilf);
     if (s->flashlogf) fclose(s->flashlogf);
+    if (s->cpu.stwtracef) {
+        printf("STWTRACE writes=%llu range=%08X..%08X\n", (unsigned long long)s->cpu.stw_writes,
+               s->cpu.stw_base, s->cpu.stw_end - 1);
+        fclose(s->cpu.stwtracef);
+        s->cpu.stwtracef = NULL;
+    }
     if (s->logf) fclose(s->logf);
     if (s->evf) fclose(s->evf);
     if (s->adcf) fclose(s->adcf);

@@ -2,6 +2,7 @@
    same ctx/params/arena setup as fxlab/tools/zdl_host.c, block by block.
 
    usage: c6xzdl EFFECT.ZDL in.wav out.f32 [ui1 .. ui9] [options]
+     --stwtrace F[,ADDR:LEN]  trace STW writes into the chain buffer (default 11F04100:40)
      --text-base HEX   load ZDL text at HEX (default C0400000; 11E00000 = L1P SRAM)
      --func NAME       audio function (default: the Fx_* symbol)
      --wav FILE        also write a 24-bit stereo WAV
@@ -152,8 +153,8 @@ static float rf(c6x_mem *m, uint32_t a) { uint32_t u = mem_rd(m, a, 4); float v;
 
 int main(int argc, char **argv)
 {
-    if (argc < 4) { fprintf(stderr, "usage: c6xzdl EFFECT.ZDL in.wav out.f32 [ui1..ui9] [--text-base HEX] [--func N] [--wav F] [--off-at S] [--on-at S] [--at S K=UI] [--probe-fx] [--pedal N] [--pedal-at T=N]\n"); return 1; }
-    const char *func = NULL, *wavout = NULL, *symname = NULL;
+    if (argc < 4) { fprintf(stderr, "usage: c6xzdl EFFECT.ZDL in.wav out.f32 [ui1..ui9] [--text-base HEX] [--func N] [--wav F] [--stwtrace F[,ADDR:LEN]] [--off-at S] [--on-at S] [--at S K=UI] [--probe-fx] [--pedal N] [--pedal-at T=N]\n"); return 1; }
+    const char *func = NULL, *wavout = NULL, *symname = NULL, *stwtrace = NULL;
     int list_syms = 0;
     double off_at = -1, on_at = -1;
     ev_t ev[64];
@@ -165,6 +166,7 @@ int main(int argc, char **argv)
     uint32_t dump_addr = 0, dump_bytes = 0;   /* --dump ADDR:BYTES : hex-dump RAM after the run */
     for (int a = 4; a < argc; a++) {
         if (!strcmp(argv[a], "--func") && a + 1 < argc) func = argv[++a];
+        else if (!strcmp(argv[a], "--stwtrace") && a + 1 < argc) stwtrace = argv[++a];
         else if (!strcmp(argv[a], "--wav") && a + 1 < argc) wavout = argv[++a];
         else if (!strcmp(argv[a], "--off-at") && a + 1 < argc) off_at = atof(argv[++a]);
         else if (!strcmp(argv[a], "--on-at") && a + 1 < argc) on_at = atof(argv[++a]);
@@ -210,6 +212,7 @@ int main(int argc, char **argv)
     static c6x_cpu c;
     cpu_init(&c, &m);
     cpu_reset(&c, 0);
+    if (stwtrace && !cpu_stwtrace_open(&c, stwtrace)) return 1;
     static c6x_cache kc;
     cache_init(&kc, 300, 150);
     cache_set_firmware_defaults(&kc);
@@ -419,6 +422,12 @@ int main(int argc, char **argv)
         for (uint32_t k = 0; k < dump_bytes; k += 4)
             printf("%s%08X: %08X", (k & 31) == 0 ? "\n" : "", dump_addr + k, mem_rd(&m, dump_addr + k, 4));
         printf("\n");
+    }
+    if (c.stwtracef) {
+        printf("STWTRACE writes=%llu range=%08X..%08X\n", (unsigned long long)c.stw_writes,
+               c.stw_base, c.stw_end - 1);
+        fclose(c.stwtracef);
+        c.stwtracef = NULL;
     }
     return 0;
 }

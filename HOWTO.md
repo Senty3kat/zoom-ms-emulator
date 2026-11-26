@@ -208,7 +208,9 @@ build/c6xboot.exe run/start/136_bootloader.bin -s 11 -q -nocache -in 0:5:0 -in 0
 прошивки через `c6xboot`.
 
 Конкретные команды запуска и значения ручек смотрите в справке: `c6xzdl -h`.
-Для сравнения размещения кода добавлен `--text-base HEX`: значение `C0400000`
+Для поиска лишних записей в буфер вывода используйте
+`--stwtrace ФАЙЛ[,АДР:ДЛИНА]`: лог разделяет `left i` и `right i`, по умолчанию
+смотрит окно `11F04100:40`. Для сравнения размещения кода добавлен `--text-base HEX`: значение `C0400000`
 используется по умолчанию, а `11E00000` загружает код в L1P SRAM и включает
 L1PCFG=0. При таком сравнении `out.f32` должен остаться побайтно равным, а
 изменяется только стоимость выборок кода.
@@ -304,6 +306,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-dma` | каждая EDMA-передача: такт, канал, SRC/DST, размер | `dma_log.txt` |
 | `-spi` | каждое слово SPI0: устройство, PC, формат, фактический SCK | `spi_log.txt` |
 | `-flashlog` | реальные записи/стирания SPI flash: такт, `fl_addr`, `fl_cmd`, `fl_writes`, адрес/байт записи или диапазон стирания; позволяет отличить перезапись `FW_META` от stale-чтения bootmini | `flash_log.txt` |
+| `-stwtrace ФАЙЛ[,АДР:ДЛИНА]` | каждая инструкция `STW` в окне буфера вывода: такт, PC, `left i` или `right i`, адрес, регистр-источник, значение и float; по умолчанию `11F04100:40` | указанный файл |
 | `-spilimit LCD:FLASH` | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку. Рекомендуется явно задавать `1:50`: при 408 МГц со стоковыми делителями флеш SPI0 может получить 68 МГц, а по умолчанию эмулятор не считает это отказом | stderr |
 | `-gpiolog` | все изменения ног GPIO со временем и PC | `gpio_log.txt` |
 | `-prof T1:T2` | гистограмма PC только в окне времени | stdout |
@@ -619,7 +622,9 @@ plus a DSP load estimate. Stock Zoom effects call OS functions and do not run
 in the standalone bench — use a full firmware run through `c6xboot` for them.
 
 Command details and knob values are in the built-in help: `c6xzdl -h`.
-To compare code placement, use `--text-base HEX`: the default is `C0400000`,
+To find unwanted writes into the output buffer, use
+`--stwtrace FILE[,ADDR:LEN]`: the log separates `left i` from `right i` and
+watches the `11F04100:40` window by default. To compare code placement, use `--text-base HEX`: the default is `C0400000`,
 while `11E00000` loads code into L1P SRAM and sets L1PCFG=0. In such a comparison
 `out.f32` must stay bit-identical; only the cost of instruction fetches changes.
 
@@ -704,6 +709,7 @@ overhead, not useful effect work.
 | `-dma` | every EDMA transfer: cycle, channel, SRC/DST, size | `dma_log.txt` |
 | `-spi` | every SPI0 word: device, PC, format, actual SCK | `spi_log.txt` |
 | `-flashlog` | real SPI flash program/erase transactions: cycle, `fl_addr`, `fl_cmd`, `fl_writes`, written address/byte or erase range; distinguishes an actual `FW_META` rewrite from stale bootmini reads | `flash_log.txt` |
+| `-stwtrace FILE[,ADDR:LEN]` | each `STW` in the output-buffer window: cycle, PC, `left i` or `right i`, address, source register, value and float; default `11F04100:40` | chosen file |
 | `-spilimit LCD:FLASH` | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check. Recommended explicitly: at 408 MHz with stock dividers SPI0 flash can reach 68 MHz, while the emulator does not treat this as a failure by default | stderr |
 | `-gpiolog` | all GPIO pin changes with time and PC | `gpio_log.txt` |
 | `-prof T1:T2` | PC histogram only inside a time window | stdout |

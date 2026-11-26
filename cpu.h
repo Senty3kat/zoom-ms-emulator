@@ -30,6 +30,10 @@ enum {
 #define PKT_MAX 14
 #define LB_MAX 112
 
+/* Default chain-buffer window used by c6xzdl: left i at +0, right i at +32. */
+#define C6X_STW_BASE_DEFAULT 0x11F04100u
+#define C6X_STW_LEN_DEFAULT  64u
+
 typedef struct {
     uint32_t addr;            /* packet start, 0xFFFFFFFF = empty */
     uint32_t next;            /* address of the following execute packet */
@@ -137,6 +141,9 @@ typedef struct c6x_cpu {
     uint8_t regreplay;
     FILE *regreplayf;
     uint64_t replay_next_cycle;
+    FILE *stwtracef;          /* optional STW trace into the output buffer */
+    uint32_t stw_base, stw_end;
+    uint64_t stw_writes;
     uint32_t bp[16];
     int nbp;
     int bp_hit;
@@ -157,6 +164,7 @@ void cpu_raise_irq(c6x_cpu *c, int n);
 uint32_t cpu_rd_ctrl(c6x_cpu *c, int id);
 void cpu_wr_ctrl(c6x_cpu *c, int id, uint32_t v);
 void cpu_dump(c6x_cpu *c, FILE *f);
+FILE *cpu_stwtrace_open(c6x_cpu *c, const char *spec);  /* FILE[,ADDR:LEN] */
 c6x_packet *cpu_fetch_packet(c6x_cpu *c, uint32_t pc);
 int cpu_ctrl_index(int tic6x_ctrl_id);
 

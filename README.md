@@ -56,7 +56,7 @@ build/c6xboot.exe run/cfw/129_main_OS.bin -s 6 -q -sysex 5000:F07E000601F7
 Ключи: `-s СЕК`, `-press МС:ПИН[:ДЛИТ[:УРОВЕНЬ]]`, `-in МС:ПИН:УРОВЕНЬ`,
 `-turn МС:ПИН_A:ПИН_B:ШАГИ`, `-snap МС:файл.png` (только раньше `-s`), `-lcd файл.png`, `-sine ГЦ АМПЛ`,
 `-out файл.wav`, `-gpio ПАРА HEX`, `-fb файл.bin` (кадр 1024 Б: 8 страниц по 128 колонок, бит 0 — верхний пиксель),
-`-adc N` (батарея), `-mhz`, `-nocache`, `-flashfast` (без задержек флеша), `-emif МГЦ`, `-stack АДР` (задать `B15` после AIS JumpClose), `-cachejump` (инвалидировать кэш после JumpClose), `-bootflash` (взять AIS из собранной флеши по `0x40000`), `-hwclose` (жёсткий старт: требует записи SPIFMT0/1, диагностический порог LCD SPI 2 МГц, синтетический native IRQ residue без `DINT`, остаточная периферия), `-romrepaint МС` (период синтетической перерисовки boot-лого для `-hwclose`), `-bootlog` (чекпоинты bootmini и карта копирования FWIMG в `boot_log.txt`), `-otacheck ФАЙЛ A/B` (сравнить слот флеша с FWIMG после прогона), `-flashlog` (журнал реальных операций записи/стирания SPI flash в `flash_log.txt`); USB: `-usb`, `-usbwav ФАЙЛ`, `-sysex МС:HEX`,
+`-adc N` (батарея), `-mhz`, `-nocache`, `-flashfast` (без задержек флеша), `-emif МГЦ`, `-stack АДР` (задать `B15` после AIS JumpClose), `-cachejump` (инвалидировать кэш после JumpClose), `-bootflash` (взять AIS из собранной флеши по `0x40000`), `-hwclose` (жёсткий старт: требует записи SPIFMT0/1, диагностический порог LCD SPI 2 МГц, синтетический native IRQ residue без `DINT`, остаточная периферия), `-romrepaint МС` (период синтетической перерисовки boot-лого для `-hwclose`), `-bootlog` (чекпоинты bootmini и карта копирования FWIMG в `boot_log.txt`), `-otacheck ФАЙЛ A/B` (сравнить слот флеша с FWIMG после прогона), `-flashlog` (журнал реальных операций записи/стирания SPI flash в `flash_log.txt`), `-stwtrace ФАЙЛ[,АДР:ДЛИНА]` (трасса `STW` в буфер вывода: `left i` и `right i`); USB: `-usb`, `-usbwav ФАЙЛ`, `-sysex МС:HEX`,
 `-midifile ФАЙЛ`, `-saveflash ФАЙЛ`. `-usbwav` пишет захваченный изохронный поток UAC в WAV 44,1 кГц / 16 бит / стерео. Отладка: `-t ТАКТ [-tl N]` — трасса команд и
 записей регистров (`trace.txt`); `-p АДРЕС` — зонд (A4/B4/A6/B6/B3 при входе в
 пакет, `probe.txt`) и останов на этом адресе; `-b АДРЕС` — останов; `-m` — журнал записей MMIO; `-w LO HI` —
@@ -78,6 +78,7 @@ build/c6xboot.exe path/to/firmware/129_main_OS.bin -s 3 -q -flashfast \
 | `-dma` | `dma_log.txt` | каждая EDMA-передача: такт, канал, SRC/DST, размер |
 | `-spi` | `spi_log.txt` | каждое слово SPI0: устройство, PC, формат, фактический SCK |
 | `-flashlog` | `flash_log.txt` | реальные записи/стирания SPI flash: такт, `fl_addr`, `fl_cmd`, `fl_writes`, адрес/байт записи или диапазон стирания |
+| `-stwtrace ФАЙЛ[,АДР:ДЛИНА]` | указанный файл | трасса `STW` в буфере вывода: такт, PC, `left i` / `right i`, адрес, исходный регистр, значение и float; по умолчанию окно `11F04100:40` |
 | `-spilimit LCD:FLASH` | stderr | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку. Рекомендуется явно задавать `1:50`: при разгоне до 408 МГц со стоковыми делителями SPI0 может дать 68 МГц на флеше, а эмулятор по умолчанию не считает это отказом |
 | `-gpiolog` | `gpio_log.txt` | все изменения ног GPIO со временем и PC |
 | `-cachelog [T1:T2]` | `cache_log.txt` | задержки кэша и попадания EDMA в кэшированную строку |
@@ -396,7 +397,7 @@ Options: `-s SEC`, `-press MS:PIN[:DURATION[:LEVEL]]`, `-in MS:PIN:LEVEL`,
 (parse AIS from assembled flash at `0x40000`), `-hwclose` (hardware-close start: require
 SPIFMT0/1 writes, diagnostic 2 MHz LCD SPI threshold, synthetic native IRQ residue without
 `DINT`, boot-ROM residue), `-romrepaint MS` (synthetic boot-logo repaint period for
-`-hwclose`), `-bootlog` (bootmini checkpoints and FWIMG copy map in `boot_log.txt`), `-otacheck FILE A/B` (compare flash slot with FWIMG after the run), `-flashlog` (log real SPI flash program/erase transactions in `flash_log.txt`); USB: `-usb`, `-sysex MS:HEX`, `-midifile FILE`, `-usbwav FILE`
+`-hwclose`), `-bootlog` (bootmini checkpoints and FWIMG copy map in `boot_log.txt`), `-otacheck FILE A/B` (compare flash slot with FWIMG after the run), `-flashlog` (log real SPI flash program/erase transactions in `flash_log.txt`), `-stwtrace FILE[,ADDR:LEN]` (trace `STW` writes into the output buffer: `left i` and `right i`); USB: `-usb`, `-sysex MS:HEX`, `-midifile FILE`, `-usbwav FILE`
 (UAC isochronous IN capture), `-saveflash FILE`. Debug: `-t CYCLE [-tl N]`
 (instruction and register-write trace, `trace.txt`); `-p ADDR` (probe:
 A4/B4/A6/B6/B3 on packet entry, `probe.txt`, and stop at that address); `-b ADDR` (stop); `-m` (MMIO write
@@ -418,6 +419,7 @@ build/c6xboot.exe path/to/firmware/129_main_OS.bin -s 3 -q -flashfast \
 | `-dma` | `dma_log.txt` | every EDMA transfer: cycle, channel, SRC/DST, size |
 | `-spi` | `spi_log.txt` | every SPI0 word: device, PC, format, actual SCK |
 | `-flashlog` | `flash_log.txt` | real SPI flash program/erase transactions: cycle, `fl_addr`, `fl_cmd`, `fl_writes`, written address/byte or erase range |
+| `-stwtrace FILE[,ADDR:LEN]` | chosen file | trace `STW` writes into the output buffer: cycle, PC, `left i` / `right i`, address, source register, value and float; default window `11F04100:40` |
 | `-spilimit LCD:FLASH` | stderr | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check. Recommended explicitly: at 408 MHz with stock dividers SPI0 can reach 68 MHz on flash, while the emulator does not treat this as a hardware failure by default |
 | `-gpiolog` | `gpio_log.txt` | all GPIO pin changes with time and PC |
 | `-cachelog [T1:T2]` | `cache_log.txt` | cache stalls and EDMA hits on cached lines |
