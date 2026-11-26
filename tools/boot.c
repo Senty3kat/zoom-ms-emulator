@@ -53,6 +53,8 @@
      -stack ADDR         set B15 at AIS JumpClose (e.g. C00F7000 for DU6 bootmini)
      -cachejump          invalidate L1D/L2/L1P at AIS JumpClose (real bootmini start)
      -bootflash          load AIS from the assembled flash at 0x40000 (host-side BIN/136 path)
+     -hwclose            hardware-close start: require SPIFMT writes, model boot-ROM residue
+     -romrepaint MS      synthetic boot-logo repaint period for -hwclose (diagnostic only)
      -q                  short report */
 #include <stdio.h>
 #include <stdlib.h>
@@ -234,7 +236,8 @@ int main(int argc, char **argv)
     c6x_sys *s = sys_create();
     g_sys = s;
     uint32_t jump_stack = 0;
-    int jump_cache = 0, boot_flash = 0;
+    int jump_cache = 0, boot_flash = 0, hwclose = 0;
+    double rom_repaint = 0;
     if (sys_load_ais(s, argv[1])) { fprintf(stderr, "load failed: %s\n", argv[1]); return 1; }
     /* DSP clock: from the image's PLL setup, -mhz overrides */
     for (int i = 2; i + 1 < argc; i++)
@@ -262,6 +265,8 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-stack") && i + 1 < argc) jump_stack = (uint32_t)strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-cachejump")) jump_cache = 1;
         else if (!strcmp(a, "-bootflash")) boot_flash = 1;
+        else if (!strcmp(a, "-hwclose")) hwclose = 1;
+        else if (!strcmp(a, "-romrepaint") && i + 1 < argc) rom_repaint = atof(argv[++i]);
         else if (!strcmp(a, "-t") && i + 1 < argc) trace_from = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-tl") && i + 1 < argc) trace_len = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-m")) s->logf = fopen("mmio.txt", "w");
@@ -456,8 +461,22 @@ int main(int argc, char **argv)
         else if (a[0] == '-') { fprintf(stderr, "unknown option %s\n", a); return 1; }
         else secs = atof(a) / 300.0;  /* legacy: Mcycles */
     }
+    sys_set_hwclose(s, hwclose, rom_repaint);
     sys_set_jump_stack(s, jump_stack);
     sys_set_jump_cache(s, jump_cache);
+    sys_hwclose_jump_reset(s);
+    if (rom_repaint > 0) s->hw_rom_repaint_ms = rom_repaint;
+    if (hwclose && s->cpu.cache) {
+        s->cpu.cache->hw_lcd_failed = s->hw_lcd_failed;
+        s->cpu.cache->hw_spifmt0_written = s->hw_spifmt0_written;
+        s->cpu.cache->hw_spifmt1_written = s->hw_spifmt1_written;
+        s->cpu.cache->hw_edma_seen = s->hw_edma_seen;
+        s->cpu.cache->hw_mcasp_seen = s->hw_mcasp_seen;
+        s->cpu.cache->hw_usb_seen = s->hw_usb_seen;
+        s->cpu.cache->hw_residual = s->hw_residual;
+        s->cpu.cache->hw_repaints = s->hw_repaints;
+        s->cpu.cache->hw_residual_cycles = s->hw_residual_cycles;
+    }
     if (s->cpu.cache) {
         if (g_cachepen[0] >= 0) s->cpu.cache->p_l1d_l2sram = g_cachepen[0];
         if (g_cachepen[1] >= 0) s->cpu.cache->p_l1d_l2c = g_cachepen[1];

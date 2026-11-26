@@ -37,6 +37,15 @@ typedef struct c6x_sys {
     FILE *spilf;              /* -spi: SPI0 words with clock/CS */
     double spi_lcd_max, spi_flash_max;  /* -spilimit, MHz; 0 = no check */
     int spi_limit_warned;
+    int hwclose;                 /* -hwclose: hardware-close start model */
+    int hw_lcd_failed;           /* fatal unsafe SPI format for LCD/start */
+    int hw_residual;             /* EDMA/McASP/USB left active after boot ROM */
+    int hw_edma_seen, hw_mcasp_seen, hw_usb_seen;  /* quiesce write-tracking */
+    int hw_spifmt0_written, hw_spifmt1_written;    /* write-tracking after JumpClose */
+    uint64_t hw_residual_cycles; /* extra LCD cycles caused by residue */
+    double hw_rom_repaint_ms;    /* -romrepaint MS, 0 = no synthetic repaint */
+    uint64_t hw_next_repaint;    /* next synthetic boot-logo repaint */
+    uint32_t hw_repaints;
 
     /* DSP interrupt controller */
     uint32_t evtflag[4];      /* 128 events */
@@ -145,6 +154,8 @@ int sys_load_ais(c6x_sys *s, const char *path);
 int sys_load_ais_from_flash(c6x_sys *s, uint32_t off, uint32_t maxlen, uint32_t *len_out);
 void sys_set_jump_stack(c6x_sys *s, uint32_t b15);   /* -stack: B15 after JumpClose */
 void sys_set_jump_cache(c6x_sys *s, int invalidate); /* -cachejump: invalidate caches after JumpClose */
+void sys_set_hwclose(c6x_sys *s, int enable, double rom_repaint_ms);
+void sys_hwclose_jump_reset(c6x_sys *s);
 int sys_load_flash_parts(c6x_sys *s, const char *dir);
 /* clocks from PLL0 + CFGCHIP3, SDRAM timings from EMIFB; updates the cache model */
 void sys_clock_rates(c6x_sys *s, double *vco, double *core, double *emif);

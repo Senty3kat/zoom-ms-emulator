@@ -41,6 +41,12 @@ typedef struct c6x_cache {
     uint64_t n_dma_snoop;        /* EDMA writes that hit a line currently in L1D */
 
     /* diagnostics (-cachelog): current PC / CPU cycle set by the caller */
+    /* hardware-close start diagnostics, mirrored from c6x_sys for reports */
+    int hw_lcd_failed, hw_spifmt0_written, hw_spifmt1_written;
+    int hw_edma_seen, hw_mcasp_seen, hw_usb_seen, hw_residual;
+    uint32_t hw_repaints;
+    uint64_t hw_residual_cycles;
+
     FILE *logf;
     uint64_t log_from, log_to;   /* CPU-cycle window for -cachelog FROM:TO (0 = all) */
     uint32_t pc;

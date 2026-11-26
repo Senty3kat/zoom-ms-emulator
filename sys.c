@@ -354,6 +354,8 @@ static void sys_schedule(c6x_sys *s)
     if ((s->asp.xrun || s->asp.rrun) && s->asp.next_slot < n) n = s->asp.next_slot;
     if (s->ninq && s->inq[0].at < n) n = s->inq[0].at;
     if (s->usb.enabled && usb_next_event(s) < n) n = usb_next_event(s);
+    if (s->hwclose && s->hw_residual && s->hw_rom_repaint_ms > 0 && s->hw_next_repaint < n)
+        n = s->hw_next_repaint;
     if (n <= cpu_now(&s->cpu)) n = cpu_now(&s->cpu) + 1;
     s->next_event = n;
 }
@@ -522,14 +524,29 @@ static void spi0_xfer(c6x_sys *s, uint32_t dat1)
         uint32_t fmt = R(0x01C41050 + 4 * ((dat1 >> 24) & 3));
         uint64_t bits = (fmt & 0x1F) ? (fmt & 0x1F) : 16, ps = ((fmt >> 8) & 0xFF) + 1;
         uint64_t dur = (bits + ((fmt >> 24) & 0x3F) + 2) * ps * 2, now = cpu_now(&s->cpu);
+        double sck_mhz = s->cpu_hz / 2.0 / (double)ps / 1e6;
+        if (s->hwclose && lcd_sel && !s->hw_spifmt0_written) {
+            s->hw_lcd_failed = 1;
+            if (s->cpu.cache) s->cpu.cache->hw_lcd_failed = 1;
+            s->cpu.halted = 1;
+            fprintf(stderr, "HWclose: LCD start failed, SPIFMT0 not written after JumpClose\n");
+        } else if (s->hwclose && flash_sel && !s->hw_spifmt1_written) {
+            s->hw_lcd_failed = 1;
+            if (s->cpu.cache) s->cpu.cache->hw_lcd_failed = 1;
+            s->cpu.halted = 1;
+            fprintf(stderr, "HWclose: flash start failed, SPIFMT1 not written after JumpClose\n");
+        }
+        if (s->hwclose && s->hw_residual && lcd_sel) {
+            s->hw_residual_cycles += dur / 4;
+        }
         s->spi_start = s->spi_done > now ? s->spi_done : now;
         s->spi_done = s->spi_start + dur;
         s->spi_busy += dur;
-        if (!s->spi_limit_warned && ((flash_sel && s->spi_flash_max > 0 && s->cpu_hz / 2.0 / (double)ps / 1e6 > s->spi_flash_max) ||
-                                     (lcd_sel && s->spi_lcd_max > 0 && s->cpu_hz / 2.0 / (double)ps / 1e6 > s->spi_lcd_max))) {
+        if (!s->spi_limit_warned && ((flash_sel && s->spi_flash_max > 0 && sck_mhz > s->spi_flash_max) ||
+                                     (lcd_sel && s->spi_lcd_max > 0 && sck_mhz > s->spi_lcd_max))) {
             s->spi_limit_warned = 1;
             fprintf(stderr, "WARN: SPI0 SCK %.2f MHz above the configured limit (LCD %.2f, flash %.2f MHz)\n",
-                    s->cpu_hz / 2.0 / (double)ps / 1e6, s->spi_lcd_max, s->spi_flash_max);
+                    sck_mhz, s->spi_lcd_max, s->spi_flash_max);
         }
         if (s->spilf)
             fprintf(s->spilf, "%10llu pc=%08X dat1=%08X rx=%02X %s fmt=%08X sck=%.3fMHz cs=%s\n",
@@ -670,6 +687,7 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
     }
     if (addr < MMIO_BASE || addr >= MMIO_BASE + MMIO_SIZE) return;
     if (addr >= 0x01E00000 && addr < 0x01E10000 && s->usb.enabled) {
+        if (addr == 0x01E00401u && !(val & 0x40u)) { s->hw_usb_seen = 1; if (s->cpu.cache) s->cpu.cache->hw_usb_seen = 1; }
         if (s->logf) fprintf(s->logf, "%10llu pc=%08X W%d %08X = %08X\n", (unsigned long long)cpu_now(&s->cpu), s->cpu.cr[CR_PCE1], size, addr, val);
         usb_write(s, addr, size, val);
         return;
@@ -695,11 +713,14 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
     if (a >= 0x01C01000 && a < 0x01C04000) {
         uint32_t off = (a < 0x01C02000) ? a - 0x01C01000 : (a - 0x01C02000) & 0x1FF;
         R(a) = val;
+        if (a == 0x01C01028u && val == 0xFFFFFFFFu) { s->hw_edma_seen = 1; if (s->cpu.cache) s->cpu.cache->hw_edma_seen = 1; }
+        if (a == 0x01C0102Cu && val == 0xFFFFFFFFu) { s->hw_edma_seen = 1; if (s->cpu.cache) s->cpu.cache->hw_edma_seen = 1; }
         edma_reg_write(s, off, val);
         return;
     }
     if ((a >= 0x01D00000 && a < 0x01D01000) || (a >= 0x01D02000 && a < 0x01D03000)) {
         asp_sync(s);
+        if (a == 0x01D00044u && val == 0) { s->hw_mcasp_seen = 1; if (s->cpu.cache) s->cpu.cache->hw_mcasp_seen = 1; }
         uint32_t off = a - 0x01D00000;
         if (a >= 0x01D02000 || (off >= 0x200 && off < 0x240)) { s->asp.xbuf = val; s->asp.xdata = 0; R(a) = val; return; }
         if (off == 0xC0 || off == 0x80) { R(a) &= ~val; return; }     /* status: write 1 to clear */
@@ -783,6 +804,14 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
     if (a >= 0x01C41000 && a < 0x01C42000) {
         uint32_t off = a - 0x01C41000;
         R(a) = val;
+        if (a == 0x01C41050u) {
+            s->hw_spifmt0_written = 1;
+            if (s->cpu.cache) s->cpu.cache->hw_spifmt0_written = 1;
+        }
+        if (a == 0x01C41054u) {
+            s->hw_spifmt1_written = 1;
+            if (s->cpu.cache) s->cpu.cache->hw_spifmt1_written = 1;
+        }
         if (off == 0x3C) spi0_xfer(s, val);
         else if (off == 0x38) spi0_xfer(s, (R(0x01C4103C) & 0xFFFF0000u) | (val & 0xFFFF));
         return;
@@ -924,6 +953,41 @@ void sys_set_jump_stack(c6x_sys *s, uint32_t b15)
 void sys_set_jump_cache(c6x_sys *s, int invalidate)
 {
     if (invalidate) cache_invalidate_all(&s->cache);
+}
+
+void sys_set_hwclose(c6x_sys *s, int enable, double rom_repaint_ms)
+{
+    s->hwclose = enable;
+    s->hw_rom_repaint_ms = rom_repaint_ms;
+    s->cache.hw_lcd_failed = s->hw_lcd_failed;
+    s->cache.hw_spifmt0_written = s->hw_spifmt0_written;
+    s->cache.hw_spifmt1_written = s->hw_spifmt1_written;
+    s->cache.hw_edma_seen = s->hw_edma_seen;
+    s->cache.hw_mcasp_seen = s->hw_mcasp_seen;
+    s->cache.hw_usb_seen = s->hw_usb_seen;
+    s->cache.hw_residual = s->hw_residual;
+    s->cache.hw_repaints = s->hw_repaints;
+    s->cache.hw_residual_cycles = s->hw_residual_cycles;
+}
+
+void sys_hwclose_jump_reset(c6x_sys *s)
+{
+    s->hw_lcd_failed = 0;
+    s->hw_spifmt0_written = s->hw_spifmt1_written = 0;
+    s->hw_edma_seen = s->hw_mcasp_seen = s->hw_usb_seen = 0;
+    s->hw_residual = 1;
+    s->hw_residual_cycles = 0;
+    s->hw_repaints = 0;
+    s->hw_next_repaint = cpu_now(&s->cpu) + (uint64_t)(s->hw_rom_repaint_ms * 1000.0 * (s->cpu_hz / 1e6));
+    s->cache.hw_lcd_failed = s->hw_lcd_failed;
+    s->cache.hw_spifmt0_written = s->hw_spifmt0_written;
+    s->cache.hw_spifmt1_written = s->hw_spifmt1_written;
+    s->cache.hw_edma_seen = s->hw_edma_seen;
+    s->cache.hw_mcasp_seen = s->hw_mcasp_seen;
+    s->cache.hw_usb_seen = s->hw_usb_seen;
+    s->cache.hw_residual = s->hw_residual;
+    s->cache.hw_repaints = s->hw_repaints;
+    s->cache.hw_residual_cycles = s->hw_residual_cycles;
 }
 
 /* ---------------- clocks and SDRAM ---------------- */
@@ -1135,6 +1199,20 @@ uint64_t sys_run(c6x_sys *s, uint64_t cycles)
             asp_sync(s);
             inputs_sync(s);
             usb_sync(s);
+            if (s->hwclose && s->hw_residual && s->hw_rom_repaint_ms > 0 && now >= s->hw_next_repaint) {
+                /* Synthetic boot-ROM logo repaint: same page/data pattern as the ZOOM logo. */
+                for (int p = 0; p < 8; p++) {
+                    memset(s->lcd_vram[p], 0xFF, sizeof s->lcd_vram[p]);
+                    s->lcd_cmds += 3;
+                }
+                s->hw_repaints++;
+                if (s->cpu.cache) s->cpu.cache->hw_repaints = s->hw_repaints;
+                s->hw_next_repaint = now + (uint64_t)(s->hw_rom_repaint_ms * 1000.0 * (s->cpu_hz / 1e6));
+            }
+            if (s->hwclose && s->hw_edma_seen && s->hw_mcasp_seen && s->hw_usb_seen) {
+                s->hw_residual = 0;
+                if (s->cpu.cache) s->cpu.cache->hw_residual = 0;
+            }
             sys_schedule(s);
         }
         if (c->idle && !(c->cr[CR_IFR] & c->cr[CR_IER] & ~1u)) {

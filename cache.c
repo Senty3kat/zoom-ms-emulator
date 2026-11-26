@@ -358,6 +358,13 @@ void cache_report(c6x_cache *k, FILE *f)
             (unsigned long long)k->n_l2_miss, (unsigned long long)k->n_l2,
             (unsigned long long)k->n_l2_wb, (unsigned long long)k->n_mmio, (unsigned long long)k->stall);
     fprintf(f, "CACHE: EDMA writes hitting cached L1D lines: %llu\n", (unsigned long long)k->n_dma_snoop);
+    if (k->hw_lcd_failed || k->hw_spifmt0_written || k->hw_spifmt1_written ||
+        k->hw_edma_seen || k->hw_mcasp_seen || k->hw_usb_seen || k->hw_repaints ||
+        k->hw_residual_cycles)
+        fprintf(f, "HWclose: lcd_failed=%d spifmt0=%d spifmt1=%d quiesce=%d/%d/%d residual=%d repaints=%u residual_cycles=%llu\n",
+                k->hw_lcd_failed, k->hw_spifmt0_written, k->hw_spifmt1_written,
+                k->hw_edma_seen, k->hw_mcasp_seen, k->hw_usb_seen,
+                k->hw_residual, k->hw_repaints, (unsigned long long)k->hw_residual_cycles);
     fprintf(f, "  penalties: L1P<-L2 %d, L1D<-L2SRAM %d, L1D<-L2$ %d, SDRAM line %d, writeback %d, uncached %d, MMIO %d\n",
             k->p_l1p_l2, k->p_l1d_l2sram, k->p_l1d_l2c, k->p_l2_fill, k->p_l2_wb, k->p_uncached, k->p_mmio);
 }
