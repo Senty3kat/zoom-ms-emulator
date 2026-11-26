@@ -56,6 +56,7 @@
      -hwclose            hardware-close start: require SPIFMT writes, model boot-ROM residue
      -romrepaint MS      synthetic boot-logo repaint period for -hwclose (diagnostic only)
      -bootlog            log bootmini checkpoints and FWIMG copy writes to boot_log.txt
+     -otacheck FILE A/B  compare flash slot with FWIMG after the run
      -q                  short report */
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,6 +82,7 @@ static uint64_t g_prof_samples;
 static uint32_t g_watch_addr, g_watch_val; static int g_watch_on, g_watch_hit;
 static int g_mmiohist;
 static const char *g_loadflash;
+static char g_otacheck_path[512]; static int g_otacheck_slot = -1;
 static int g_oc_warned;
 
 /* -audioload: cycle-accurate cost of the L2 ZDL dispatcher calls */
@@ -270,6 +272,13 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-hwclose")) hwclose = 1;
         else if (!strcmp(a, "-romrepaint") && i + 1 < argc) rom_repaint = atof(argv[++i]);
         else if (!strcmp(a, "-bootlog")) bootlogf = fopen("boot_log.txt", "w");
+        else if (!strcmp(a, "-otacheck") && i + 2 < argc) {
+            const char *file = argv[++i], *slot = argv[++i];
+            if (slot[0] && (slot[0] == 'A' || slot[0] == 'a' || slot[0] == 'B' || slot[0] == 'b')) {
+                g_otacheck_slot = (slot[0] == 'B' || slot[0] == 'b');
+                snprintf(g_otacheck_path, sizeof g_otacheck_path, "%s", file);
+            }
+        }
         else if (!strcmp(a, "-t") && i + 1 < argc) trace_from = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-tl") && i + 1 < argc) trace_len = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-m")) s->logf = fopen("mmio.txt", "w");
@@ -613,6 +622,26 @@ int main(int argc, char **argv)
             FILE *ff = fopen(argv[i + 1], "wb");
             if (ff) { fwrite(s->flash, 1, s->flash_size, ff); fclose(ff); }
         }
+    if (g_otacheck_slot >= 0 && g_otacheck_path[0]) {
+        FILE *ff = fopen(g_otacheck_path, "rb");
+        if (!ff) fprintf(stderr, "otacheck: cannot open %s\n", g_otacheck_path);
+        else {
+            fseek(ff, 0, SEEK_END); long n = ftell(ff); fseek(ff, 0, SEEK_SET);
+            uint8_t *img = malloc((size_t)n + 1);
+            if (fread(img, 1, (size_t)n, ff) != (size_t)n) { n = 0; }
+            fclose(ff);
+            uint32_t base = g_otacheck_slot ? 0x80000u : 0x50000u;
+            size_t bad = 0, have_bad = 0; size_t lim = (size_t)n;
+            if (base + lim > s->flash_size) lim = s->flash_size - base;
+            for (size_t k = 0; k < lim; k++) if (s->flash[base + k] != img[k]) { bad = k; have_bad = 1; break; }
+            printf("OTACHECK: slot %c file %s bytes=%ld mismatch=%s first_bad=%zu\n",
+                   g_otacheck_slot ? 'B' : 'A', g_otacheck_path, n,
+                   have_bad ? "YES" : "NO", bad);
+            if (bootlogf) fprintf(bootlogf, "otacheck: slot %c bytes=%ld first_bad=%zu\n",
+                                  g_otacheck_slot ? 'B' : 'A', n, bad);
+            free(img);
+        }
+    }
     sys_lcd_dump_png(s, lcd, 3);
     sys_write_wav(s, wav);
     for (int i = 2; i < argc; i++) {
