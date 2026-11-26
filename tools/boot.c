@@ -53,10 +53,13 @@
      -b ADDR             stop at packet ADDR
      -dump ADDR LEN      hex dump at the end
      -stack ADDR         set B15 at AIS JumpClose (e.g. C00F7000 for DU6 bootmini)
-     -cachejump          invalidate L1D/L2/L1P at AIS JumpClose (real bootmini start)
-     -s3kstale [ADDR:LEN] model stale instruction fetch after S3K copy (default C0300000:10000)
+     -cachejump          invalidate L1D/L2/L1P at AIS JumpClose (default)
+     -no-cachejump       disable the default cache invalidation at JumpClose (A/B only)
+     -staleicode [ADDR:LEN] stale instruction fetch after self-modifying code load (default C0300000:10000)
+     -no-staleicode      disable the default stale-instruction model (A/B only)
      -bootflash          load AIS from the assembled flash at 0x40000 (host-side BIN/136 path)
-     -hwclose            hardware-close start: require SPIFMT writes, model boot-ROM residue
+     -hwclose            hardware-close start (default): require SPIFMT writes, model boot-ROM residue
+     -no-hwclose         disable the default hardware-close model (A/B only)
      -hwlcdlimit MHZ     fatal LCD SCK threshold for -hwclose (default 25, diagnostic only)
      -romrepaint MS      synthetic boot-logo repaint period for -hwclose (diagnostic only)
      -bootlog            log bootmini checkpoints and FWIMG copy writes to boot_log.txt
@@ -89,7 +92,7 @@ static const char *g_loadflash;
 static char g_otacheck_path[512]; static int g_otacheck_slot = -1;
 static int g_oc_warned;
 static const char *g_stwtrace;
-static const char *g_s3kstale;
+static const char *g_staleicode = "C0300000:10000";
 
 /* -audioload: cycle-accurate cost of the L2 ZDL dispatcher calls */
 typedef struct { uint32_t addr; uint64_t calls, cycles; } audiorec;
@@ -246,7 +249,7 @@ int main(int argc, char **argv)
     c6x_sys *s = sys_create();
     g_sys = s;
     uint32_t jump_stack = 0;
-    int jump_cache = 0, boot_flash = 0, hwclose = 0;
+    int jump_cache = 1, boot_flash = 0, hwclose = 1;
     double rom_repaint = 0;
     if (sys_load_ais(s, argv[1])) { fprintf(stderr, "load failed: %s\n", argv[1]); return 1; }
     /* DSP clock: from the image's PLL setup, -mhz overrides */
@@ -274,12 +277,15 @@ int main(int argc, char **argv)
         if (!strcmp(a, "-s") && i + 1 < argc) secs = atof(argv[++i]);
         else if (!strcmp(a, "-stack") && i + 1 < argc) jump_stack = (uint32_t)strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-cachejump")) jump_cache = 1;
-        else if (!strcmp(a, "-s3kstale")) {
-            g_s3kstale = "C0300000:10000";
-            if (i + 1 < argc && argv[i + 1][0] != '-' && strchr(argv[i + 1], ':')) g_s3kstale = argv[++i];
+        else if (!strcmp(a, "-no-cachejump")) jump_cache = 0;
+        else if (!strcmp(a, "-staleicode")) {
+            g_staleicode = "C0300000:10000";
+            if (i + 1 < argc && argv[i + 1][0] != '-' && strchr(argv[i + 1], ':')) g_staleicode = argv[++i];
         }
+        else if (!strcmp(a, "-no-staleicode")) g_staleicode = NULL;
         else if (!strcmp(a, "-bootflash")) boot_flash = 1;
         else if (!strcmp(a, "-hwclose")) hwclose = 1;
+        else if (!strcmp(a, "-no-hwclose")) hwclose = 0;
         else if (!strcmp(a, "-hwlcdlimit") && i + 1 < argc) {
             double mhz = atof(argv[++i]);
             if (mhz > 0) s->hw_lcd_max_mhz = mhz;
@@ -542,20 +548,20 @@ int main(int argc, char **argv)
     s->cpu.on_bp = on_bp;
     s->on_clock = on_clock;
     g_total = MS(secs * 1000);
-    if (g_s3kstale) {
-        const char *colon = strchr(g_s3kstale, ':');
+    if (g_staleicode) {
+        const char *colon = strchr(g_staleicode, ':');
         uint32_t lo = 0xC0300000u, len = 0x10000u;
         if (colon) {
             char *end;
-            unsigned long long a = strtoull(g_s3kstale, &end, 16);
-            if (end == g_s3kstale || end != colon) { fprintf(stderr, "-s3kstale: bad address\n"); return 1; }
+            unsigned long long a = strtoull(g_staleicode, &end, 16);
+            if (end == g_staleicode || end != colon) { fprintf(stderr, "-staleicode: bad address\n"); return 1; }
             unsigned long long l = strtoull(colon + 1, &end, 16);
-            if (end == colon + 1 || *end || !l) { fprintf(stderr, "-s3kstale: bad length\n"); return 1; }
+            if (end == colon + 1 || *end || !l) { fprintf(stderr, "-staleicode: bad length\n"); return 1; }
             lo = (uint32_t)a; len = (uint32_t)l;
         }
-        if (!len || lo + len < lo) { fprintf(stderr, "-s3kstale: invalid range\n"); return 1; }
+        if (!len || lo + len < lo) { fprintf(stderr, "-staleicode: invalid range\n"); return 1; }
         mem_stale_region(&s->mem, lo, len);
-        fprintf(stderr, "S3KSTALE: icode region %08X..%08X, armed\n", lo, lo + len - 1);
+        fprintf(stderr, "STALEICODE: icode region %08X..%08X, armed\n", lo, lo + len - 1);
     }
     if (g_stwtrace && !cpu_stwtrace_open(&s->cpu, g_stwtrace)) return 1;
     static hot hist[1 << 16];
@@ -617,7 +623,7 @@ int main(int argc, char **argv)
     }
     printf("FLASH: reads=%u writes=%u erases=%u\n", s->fl_reads, s->fl_writes, s->fl_erases);
     if (s->mem.stale_snap)
-        printf("S3KSTALE: fetches=%llu active=%u range=%08X..%08X\n",
+        printf("STALEICODE: fetches=%llu active=%u range=%08X..%08X\n",
                (unsigned long long)s->mem.stale_fetches, s->mem.stale_active,
                s->mem.stale_lo, s->mem.stale_hi - 1);
     printf("SPI0: shifting %.1f ms of %.1f ms; flash program/erase %.1f ms\n", s->spi_busy * 1000.0 / s->cpu_hz,

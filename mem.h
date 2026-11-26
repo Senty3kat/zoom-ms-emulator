@@ -38,7 +38,7 @@ typedef struct c6x_mem {
     uint32_t wwatch_lo, wwatch_hi;  /* RAM write watch range */
     void (*on_wwatch)(struct c6x_sys *s, uint32_t addr, int size, uint32_t val);
 
-    /* -s3kstale: instruction fetch keeps pre-copy bytes until L1P/L2 invalidate */
+    /* -staleicode: instruction fetch keeps pre-copy bytes until L1P/L2 invalidate */
     uint32_t stale_lo, stale_hi;
     uint8_t *stale_snap;
     uint8_t stale_armed, stale_active;

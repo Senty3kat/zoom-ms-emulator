@@ -289,9 +289,9 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-ww LO HI ТАКТ` | все записи в память в диапазоне с такта ТАКТ | `ww.txt` |
 | `-dump АДРЕС ДЛИНА` | показать память в конце | консоль |
 | `-stack АДР` | задать `B15` сразу после AIS JumpClose; например `C00F7000` для bootmini DU6 | консоль |
-| `-cachejump` | инвалидировать L1D, L2 и L1P сразу после JumpClose, как bootmini DU6 | консоль |
+| `-cachejump` | инвалидация L1D, L2 и L1P сразу после JumpClose включена по умолчанию; `-no-cachejump` отключает | консоль |
 | `-bootflash` | взять AIS из собранной 4 МБ флеши по `0x40000`, а не из аргумента; ближе к пути BIN/136 | консоль |
-| `-hwclose` | hardware-close старт: останов без записи SPIFMT0/1, диагностический порог LCD SPI 25 МГц, synthetic native IRQ residue без `DINT`, учёт остаточной периферии boot ROM. Это порог эмулятора, а не измеренный предел железа | stderr |
+| `-hwclose` | hardware-close старт включён по умолчанию: останов без записи SPIFMT0/1, диагностический порог LCD SPI 25 МГц, synthetic native IRQ residue без `DINT`, учёт остаточной периферии boot ROM; `-no-hwclose` отключает. Порог эмулятора, не измеренный предел железа | stderr |
 | `-hwlcdlimit МГЦ` | переопределить диагностический порог LCD SPI для `-hwclose`; по умолчанию 25 МГц | stderr |
 | `-romrepaint МС` | период синтетической перерисовки boot-лого при `-hwclose`; диагностический параметр, не hardware-факт | stderr |
 | `-bootlog` | ловить bootmini-чекпоинты по однородным LCD-кадрам и логировать копирование FWIMG | `boot_log.txt` |
@@ -308,7 +308,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-spi` | каждое слово SPI0: устройство, PC, формат, фактический SCK | `spi_log.txt` |
 | `-flashlog` | реальные записи/стирания SPI flash: такт, `fl_addr`, `fl_cmd`, `fl_writes`, адрес/байт записи или диапазон стирания; позволяет отличить перезапись `FW_META` от stale-чтения bootmini | `flash_log.txt` |
 | `-stwtrace ФАЙЛ[,АДР:ДЛИНА]` | каждая инструкция `STW` в окне буфера вывода: такт, PC, `left i` или `right i`, адрес, регистр-источник, значение и float; по умолчанию `11F04100:40` | указанный файл |
-| `-s3kstale [АДР:ДЛИНА]` | выборка команд из региона S3K возвращает старые байты после копии до инвалидации L1P/L2; по умолчанию `C0300000:10000` | stdout |
+| `-staleicode [АДР:ДЛИНА]` | выборка команд из региона исполняемого кода возвращает старые байты после загрузки до инвалидации L1P/L2; включено по умолчанию, `-no-staleicode` отключает | stdout |
 | `-spilimit LCD:FLASH` | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку. Рекомендуется явно задавать `1:50`: при 408 МГц со стоковыми делителями флеш SPI0 может получить 68 МГц, а по умолчанию эмулятор не считает это отказом | stderr |
 | `-gpiolog` | все изменения ног GPIO со временем и PC | `gpio_log.txt` |
 | `-prof T1:T2` | гистограмма PC только в окне времени | stdout |
@@ -694,9 +694,9 @@ overhead, not useful effect work.
 | `-ww LO HI CYCLE` | all memory writes in a range from CYCLE | `ww.txt` |
 | `-dump ADDR LEN` | show memory at the end | console |
 | `-stack ADDR` | set `B15` right after AIS JumpClose, e.g. `C00F7000` for DU6 bootmini | console |
-| `-cachejump` | invalidate L1D, L2 and L1P right after JumpClose, like DU6 bootmini | console |
+| `-cachejump` | L1D, L2 and L1P invalidation right after JumpClose is on by default; `-no-cachejump` disables it | console |
 | `-bootflash` | parse AIS from the assembled 4 MB flash at `0x40000` instead of the argument file; closer to the BIN/136 path | console |
-| `-hwclose` | hardware-close start: stop without SPIFMT0/1 writes, diagnostic 25 MHz LCD SPI threshold, synthetic native IRQ residue without `DINT`, model boot-ROM peripheral residue. This is an emulator threshold, not a measured hardware limit | stderr |
+| `-hwclose` | hardware-close start is on by default: stop without SPIFMT0/1 writes, diagnostic 25 MHz LCD SPI threshold, synthetic native IRQ residue without `DINT`, model boot-ROM peripheral residue; `-no-hwclose` disables it. This is an emulator threshold, not a measured hardware limit | stderr |
 | `-hwlcdlimit MHZ` | override the diagnostic LCD SPI threshold for `-hwclose`; default 25 MHz | stderr |
 | `-romrepaint MS` | synthetic boot-logo repaint period for `-hwclose`; diagnostic parameter, not a hardware fact | stderr |
 | `-bootlog` | capture bootmini checkpoints from uniform LCD frames and log FWIMG copy writes | `boot_log.txt` |
@@ -713,7 +713,7 @@ overhead, not useful effect work.
 | `-spi` | every SPI0 word: device, PC, format, actual SCK | `spi_log.txt` |
 | `-flashlog` | real SPI flash program/erase transactions: cycle, `fl_addr`, `fl_cmd`, `fl_writes`, written address/byte or erase range; distinguishes an actual `FW_META` rewrite from stale bootmini reads | `flash_log.txt` |
 | `-stwtrace FILE[,ADDR:LEN]` | each `STW` in the output-buffer window: cycle, PC, `left i` or `right i`, address, source register, value and float; default `11F04100:40` | chosen file |
-| `-s3kstale [ADDR:LEN]` | instruction fetch from the S3K region returns pre-copy bytes until an L1P/L2 invalidate; default `C0300000:10000` | stdout |
+| `-staleicode [ADDR:LEN]` | instruction fetch from the loaded-code region returns pre-copy bytes until an L1P/L2 invalidate; on by default, `-no-staleicode` disables it | stdout |
 | `-spilimit LCD:FLASH` | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check. Recommended explicitly: at 408 MHz with stock dividers SPI0 flash can reach 68 MHz, while the emulator does not treat this as a failure by default | stderr |
 | `-gpiolog` | all GPIO pin changes with time and PC | `gpio_log.txt` |
 | `-prof T1:T2` | PC histogram only inside a time window | stdout |

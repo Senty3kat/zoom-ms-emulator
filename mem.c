@@ -9,7 +9,7 @@ static void bootlog_hook(struct c6x_sys *s, uint32_t addr, int size, uint32_t va
     sys_bootlog_write(s, addr, size, val);
 }
 
-/* Snapshot the region on the first write after -s3kstale. Real memory keeps the
+/* Snapshot the region on the first write after -staleicode. Real memory keeps the
    new bytes; instruction fetch keeps the old bytes until an L1P/L2 invalidate. */
 static void stale_touch(c6x_mem *m, uint32_t addr, uint32_t len)
 {
