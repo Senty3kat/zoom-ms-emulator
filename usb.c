@@ -269,10 +269,10 @@ static void core_wr(c6x_sys *s, uint32_t c, int size, uint32_t v)
         switch (o) {
         case 0x00: u->faddr = b & 0x7F; ulog(s, "FADDR <- %d", u->faddr); break;
         case 0x01:
-            /* MUSB POWER: bit 7 SOFTCONN enables the pull-up, bit 6 HS_MODE
-               selects high-speed signalling. Full-speed devices set only 0x80. */
-            if ((b ^ u->power) & 0x80) ulog(s, "POWER.SOFTCONN %s", (b & 0x80) ? "on" : "off");
-            if ((b ^ u->power) & 0x40) ulog(s, "POWER.HS_MODE %s", (b & 0x40) ? "on" : "off");
+            /* Stock 70CDR 2.10 writes POWER=0x40 at PC C00A2E60 and enumerates
+               on the pedal. Use that as the model ground truth: 0x40 attaches. */
+            if ((b ^ u->power) & 0x40) ulog(s, "POWER.SOFTCONN %s", (b & 0x40) ? "on" : "off");
+            if ((b ^ u->power) & 0x80) ulog(s, "POWER.OTHER7 %s", (b & 0x80) ? "on" : "off");
             u->power = b;
             break;
         case 0x06: u->intrtxe = (uint16_t)((u->intrtxe & 0xFF00) | b); break;
@@ -837,8 +837,8 @@ void usb_sync(c6x_sys *s)
     u->next_tick = now + us(s, 50);
     switch (u->state) {
     case H_WAIT_CONNECT:
-        /* Attach on SOFTCONN (POWER bit 7). HS_MODE (bit 6) does not attach. */
-        if (u->power & 0x80) {
+        /* Stock 70CDR 2.10 attaches with POWER=0x40; hardware is ground truth. */
+        if (u->power & 0x40) {
             if (!u->connect_at) { u->connect_at = now + us(s, 100000); ulog(s, "device attached (SOFTCONN)"); }
             else if (now >= u->connect_at) {
                 ulog(s, "bus reset");
