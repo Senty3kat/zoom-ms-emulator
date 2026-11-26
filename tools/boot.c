@@ -253,7 +253,6 @@ int main(int argc, char **argv)
     if (argc < 2) { fprintf(stderr, "usage: c6xboot DIR/129_main_OS.bin [options]  (see source header; -adclog = trace ADC SPI1 polls)\n"); return 1; }
     {
         static const char *legacy[] = {
-            "-s3kstale", "-no-s3kstale", "-nos3kstale",
             "-usbtrace", "-usblog", "-midilog", "-cachelogall",
             "-hwclose=0", "-hwclose=1", NULL
         };
@@ -264,7 +263,6 @@ int main(int argc, char **argv)
             if (legacy_name) break;
         }
         if (legacy_name) {
-            if (!strncmp(legacy_name, "-s3k", 4)) replacement = "-staleicode / -no-staleicode";
             else if (!strncmp(legacy_name, "-usb", 4) || !strncmp(legacy_name, "-midi", 5))
                 replacement = "logs are written always; use -q for a short report";
             else if (!strncmp(legacy_name, "-cache", 6)) replacement = "-cachelog with an optional T1:T2 window";
@@ -545,14 +543,12 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-fb") || !strcmp(a, "-mhz") || !strcmp(a, "-saveflash")) i += 1;
          else if (a[0] == '-') {
              static const char *legacy[] = {
-                 "-s3kstale", "-no-s3kstale", "-nos3kstale",
                  "-usbtrace", "-usblog", "-midilog", "-cachelogall",
                  "-hwclose=0", "-hwclose=1", NULL
              };
              const char *replacement = NULL;
              for (int k = 0; legacy[k]; k++)
                  if (!strcmp(a, legacy[k])) {
-                     if (!strncmp(a, "-s3k", 4)) replacement = "-staleicode / -no-staleicode";
                      else if (!strncmp(a, "-usb", 4) || !strncmp(a, "-midi", 5)) replacement = "logs are written always; use -q for a short report";
                      else if (!strncmp(a, "-cache", 6)) replacement = "-cachelog with an optional T1:T2 window";
                      else replacement = "-hwclose / -no-hwclose";
