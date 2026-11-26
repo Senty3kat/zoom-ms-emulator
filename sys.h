@@ -7,6 +7,7 @@
 #include "cache.h"
 #include "usb.h"
 #include "mem.h"
+#include "ais.h"
 
 #define MMIO_BASE 0x01800000u
 #define MMIO_SIZE 0x00800000u
@@ -136,10 +137,12 @@ typedef struct c6x_sys {
     uint64_t next_event;
     c6x_cache cache;              /* timing model; attached to cpu.cache unless -nocache */
     c6x_usb usb;                  /* USB0 + scripted host (-usb) */
+    ais_info boot_info_flash;     /* info from the -bootflash AIS parse */
 } c6x_sys;
 
 c6x_sys *sys_create(void);
 int sys_load_ais(c6x_sys *s, const char *path);
+int sys_load_ais_from_flash(c6x_sys *s, uint32_t off, uint32_t maxlen, uint32_t *len_out);
 void sys_set_jump_stack(c6x_sys *s, uint32_t b15);   /* -stack: B15 after JumpClose */
 void sys_set_jump_cache(c6x_sys *s, int invalidate); /* -cachejump: invalidate caches after JumpClose */
 int sys_load_flash_parts(c6x_sys *s, const char *dir);

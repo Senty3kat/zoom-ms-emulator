@@ -899,6 +899,17 @@ int sys_load_ais(c6x_sys *s, const char *path)
     return 0;
 }
 
+/* Take the AIS image from the already assembled flash instead of a separate
+   file. This is the host-side model of "BIN/136 reads BIN/129 from SPI flash":
+   same AIS parser, but no direct file shortcut. */
+int sys_load_ais_from_flash(c6x_sys *s, uint32_t off, uint32_t maxlen, uint32_t *len_out)
+{
+    if (!s->flash || off >= s->flash_size) return -1;
+    if (maxlen > s->flash_size - off) maxlen = s->flash_size - off;
+    if (len_out) *len_out = maxlen;
+    return ais_load(&s->mem, s->flash + off, maxlen, &s->boot_info_flash, 0);
+}
+
 /* AIS JumpClose enters with whatever B15 the boot ROM happened to leave. The
    model resets registers to zero, which hides a missing stack setup in CFW.
    -stack lets a test provide the real stack pointer from the image linker. */

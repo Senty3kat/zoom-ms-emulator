@@ -288,6 +288,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-dump АДРЕС ДЛИНА` | показать память в конце | консоль |
 | `-stack АДР` | задать `B15` сразу после AIS JumpClose; например `C00F7000` для bootmini DU6 | консоль |
 | `-cachejump` | инвалидировать L1D, L2 и L1P сразу после JumpClose, как bootmini DU6 | консоль |
+| `-bootflash` | взять AIS из собранной 4 МБ флеши по `0x40000`, а не из аргумента; ближе к пути BIN/136 | консоль |
 | без `-q` | регистры CPU, 20 самых «горячих» адресов, обращения к периферии | консоль |
 
 ### Новые диагностические ключи
@@ -682,6 +683,7 @@ overhead, not useful effect work.
 | `-dump ADDR LEN` | show memory at the end | console |
 | `-stack ADDR` | set `B15` right after AIS JumpClose, e.g. `C00F7000` for DU6 bootmini | console |
 | `-cachejump` | invalidate L1D, L2 and L1P right after JumpClose, like DU6 bootmini | console |
+| `-bootflash` | parse AIS from the assembled 4 MB flash at `0x40000` instead of the argument file; closer to the BIN/136 path | console |
 | without `-q` | CPU registers, 20 hottest addresses, peripheral accesses | console |
 
 ### New diagnostic options

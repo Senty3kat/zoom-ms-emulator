@@ -52,6 +52,7 @@
      -dump ADDR LEN      hex dump at the end
      -stack ADDR         set B15 at AIS JumpClose (e.g. C00F7000 for DU6 bootmini)
      -cachejump          invalidate L1D/L2/L1P at AIS JumpClose (real bootmini start)
+     -bootflash          load AIS from the assembled flash at 0x40000 (host-side BIN/136 path)
      -q                  short report */
 #include <stdio.h>
 #include <stdlib.h>
@@ -233,7 +234,7 @@ int main(int argc, char **argv)
     c6x_sys *s = sys_create();
     g_sys = s;
     uint32_t jump_stack = 0;
-    int jump_cache = 0;
+    int jump_cache = 0, boot_flash = 0;
     if (sys_load_ais(s, argv[1])) { fprintf(stderr, "load failed: %s\n", argv[1]); return 1; }
     /* DSP clock: from the image's PLL setup, -mhz overrides */
     for (int i = 2; i + 1 < argc; i++)
@@ -260,6 +261,7 @@ int main(int argc, char **argv)
         if (!strcmp(a, "-s") && i + 1 < argc) secs = atof(argv[++i]);
         else if (!strcmp(a, "-stack") && i + 1 < argc) jump_stack = (uint32_t)strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-cachejump")) jump_cache = 1;
+        else if (!strcmp(a, "-bootflash")) boot_flash = 1;
         else if (!strcmp(a, "-t") && i + 1 < argc) trace_from = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-tl") && i + 1 < argc) trace_len = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-m")) s->logf = fopen("mmio.txt", "w");
@@ -472,6 +474,16 @@ int main(int argc, char **argv)
         size_t got = fread(s->flash, 1, s->flash_size, ff);
         fclose(ff);
         fprintf(stderr, "loadflash: %s (%zu bytes)\n", g_loadflash, got);
+    }
+    if (boot_flash) {
+        uint32_t flen = 0;
+        if (sys_load_ais_from_flash(s, 0x40000, 0xB0000, &flen))
+        { fprintf(stderr, "bootflash: no valid AIS at flash 0x40000\n"); return 1; }
+        cpu_reset(&s->cpu, s->boot_info_flash.entry);
+        sys_set_jump_stack(s, jump_stack);
+        sys_set_jump_cache(s, jump_cache);
+        fprintf(stderr, "bootflash: parsed AIS from flash 0x40000 (%u bytes), entry 0x%08X, %d section(s)\n",
+                flen, s->boot_info_flash.entry, s->boot_info_flash.nsections);
     }
     for (int i = 0; i < g_ncalls; i++) s->cpu.bp[s->cpu.nbp++] = g_calls[i];
     s->cpu.on_bp = on_bp;
