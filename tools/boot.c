@@ -251,6 +251,33 @@ static void on_clock(c6x_sys *s, uint64_t now, double r)
 int main(int argc, char **argv)
 {
     if (argc < 2) { fprintf(stderr, "usage: c6xboot DIR/129_main_OS.bin [options]  (see source header; -adclog = trace ADC SPI1 polls)\n"); return 1; }
+    {
+        static const char *legacy[] = {
+            "-s3kstale", "-no-s3kstale", "-nos3kstale",
+            "-usbtrace", "-usblog", "-midilog", "-cachelogall",
+            "-hwclose=0", "-hwclose=1", NULL
+        };
+        const char *legacy_name = NULL, *replacement = NULL;
+        for (int k = 1; k < argc; k++) {
+            for (int j = 0; legacy[j]; j++)
+                if (!strcmp(argv[k], legacy[j])) { legacy_name = argv[k]; break; }
+            if (legacy_name) break;
+        }
+        if (legacy_name) {
+            if (!strncmp(legacy_name, "-s3k", 4)) replacement = "-staleicode / -no-staleicode";
+            else if (!strncmp(legacy_name, "-usb", 4) || !strncmp(legacy_name, "-midi", 5))
+                replacement = "logs are written always; use -q for a short report";
+            else if (!strncmp(legacy_name, "-cache", 6)) replacement = "-cachelog with an optional T1:T2 window";
+            else replacement = "-hwclose / -no-hwclose";
+            fprintf(stderr,
+                    "LEGACY OPTION %s: this form worked before v1.1. Current version: v1.1.\n"
+                    "The emulator now starts with hardware-close, cache invalidation and stale-code\n"
+                    "model enabled by default; -no-hwclose, -no-cachejump and -no-staleicode are\n"
+                    "A/B ablations only. Use: %s\n",
+                    legacy_name, replacement);
+            return 0;
+        }
+    }
     c6x_sys *s = sys_create();
     g_sys = s;
     uint32_t jump_stack = 0;
@@ -516,7 +543,34 @@ int main(int argc, char **argv)
             if (sscanf(argv[++i], "%lf:%255s", &t, f) == 2) { snaps[nsnaps].at = MS(t); strcpy(snaps[nsnaps].file, f); nsnaps++; }
         } else if (!strcmp(a, "-dump")) i += 2;
         else if (!strcmp(a, "-fb") || !strcmp(a, "-mhz") || !strcmp(a, "-saveflash")) i += 1;
-        else if (a[0] == '-') { fprintf(stderr, "unknown option %s\n", a); return 1; }
+         else if (a[0] == '-') {
+             static const char *legacy[] = {
+                 "-s3kstale", "-no-s3kstale", "-nos3kstale",
+                 "-usbtrace", "-usblog", "-midilog", "-cachelogall",
+                 "-hwclose=0", "-hwclose=1", NULL
+             };
+             const char *replacement = NULL;
+             for (int k = 0; legacy[k]; k++)
+                 if (!strcmp(a, legacy[k])) {
+                     if (!strncmp(a, "-s3k", 4)) replacement = "-staleicode / -no-staleicode";
+                     else if (!strncmp(a, "-usb", 4) || !strncmp(a, "-midi", 5)) replacement = "logs are written always; use -q for a short report";
+                     else if (!strncmp(a, "-cache", 6)) replacement = "-cachelog with an optional T1:T2 window";
+                     else replacement = "-hwclose / -no-hwclose";
+                     break;
+                 }
+             if (replacement) {
+                 fprintf(stderr,
+                         "LEGACY OPTION %s: this form worked before v1.1. Current version: v1.1.\n"
+                         "The emulator now starts with hardware-close, cache invalidation and stale-code\n"
+                         "model enabled by default; use -no-hwclose, -no-cachejump and -no-staleicode\n"
+                         "only for A/B ablations. Use: %s\n",
+                         a, replacement);
+                 fprintf(stderr, "Run without a firmware argument to see the full help.\n");
+                 return 0;
+             }
+             fprintf(stderr, "unknown option %s\n", a);
+             return 1;
+         }
         else secs = atof(a) / 300.0;  /* legacy: Mcycles */
     }
     if (bootlogf) s->bootlogf = bootlogf;
