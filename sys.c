@@ -447,11 +447,18 @@ static uint8_t flash_byte(c6x_sys *s, uint8_t b)
     if (n == 0) {
         s->fl_cmd = b;
         s->fl_addr = 0;
+        s->fl_log_cmd = b;
+        s->fl_log_have = 0;
         switch (b) {
         case 0x06: s->fl_status |= 2; break;       /* WREN */
         case 0x04: s->fl_status &= ~2; break;      /* WRDI */
         case 0xC7: case 0x60:                      /* chip erase */
-            if (s->fl_status & 2) { memset(s->flash, 0xFF, s->flash_size); s->fl_erases++; s->fl_status &= ~2; }
+            if (s->fl_status & 2) {
+                memset(s->flash, 0xFF, s->flash_size); s->fl_erases++; s->fl_status &= ~2;
+                if (s->flashlogf)
+                    fprintf(s->flashlogf, "%10llu fl_addr=------ fl_cmd=%02X fl_writes=%u erase=whole-chip\n",
+                            (unsigned long long)cpu_now(&s->cpu), b, s->fl_writes);
+            }
             break;
         }
         return out;
@@ -468,21 +475,33 @@ static uint8_t flash_byte(c6x_sys *s, uint8_t b)
         s->fl_reads++;
         return out;
     case 0x02:                                     /* page program */
-        if (n <= 3) { s->fl_addr = (s->fl_addr << 8) | b; return out; }
+        if (n <= 3) {
+            s->fl_addr = (s->fl_addr << 8) | b;
+            if (n == 3) s->fl_log_have = 1;
+            return out;
+        }
         if (s->fl_status & 2) {
             uint32_t a = (s->fl_addr & ~0xFFu) | ((s->fl_addr + (uint32_t)(n - 4)) & 0xFF);
             s->flash[a % s->flash_size] &= b;
             s->fl_writes++;
+            if (s->flashlogf && (s->fl_log_have || (a & 0xFFFFu) == 0))
+                fprintf(s->flashlogf, "%10llu fl_addr=%06X fl_cmd=%02X fl_writes=%u write=%08X\n",
+                        (unsigned long long)cpu_now(&s->cpu), a, s->fl_log_cmd, s->fl_writes, b);
         }
         return out;
     case 0x20: case 0x52: case 0xD8:               /* sector / block erase */
         if (n <= 3) {
             s->fl_addr = (s->fl_addr << 8) | b;
+            if (n == 3) s->fl_log_have = 1;
             if (n == 3 && (s->fl_status & 2)) {
                 uint32_t sz = s->fl_cmd == 0x20 ? 0x1000 : s->fl_cmd == 0x52 ? 0x8000 : 0x10000;
                 uint32_t a = (s->fl_addr & ~(sz - 1)) % s->flash_size;
                 memset(s->flash + a, 0xFF, sz);
                 s->fl_erases++;
+                if (s->flashlogf)
+                    fprintf(s->flashlogf, "%10llu fl_addr=%06X fl_cmd=%02X fl_writes=%u erase=%06X..%06X\n",
+                            (unsigned long long)cpu_now(&s->cpu), a, s->fl_log_cmd, s->fl_writes,
+                            a, a + sz - 1);
             }
         }
         return out;

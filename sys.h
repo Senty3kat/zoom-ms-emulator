@@ -108,6 +108,10 @@ typedef struct c6x_sys {
     uint64_t fl_busy;         /* total program / erase time, CPU cycles */
     int fl_instant;           /* -flashfast: program and erase take no time */
     uint32_t fl_reads, fl_writes, fl_erases;
+    FILE *flashlogf;          /* -flashlog: flash program/erase transactions */
+    uint32_t fl_log_addr;     /* address assembled from the 3 address bytes */
+    uint8_t fl_log_cmd;       /* command byte at the start of the transaction */
+    uint8_t fl_log_have;      /* address has been fully received */
 
     /* EDMA3 channel controller (single shared view of all regions) */
     struct {

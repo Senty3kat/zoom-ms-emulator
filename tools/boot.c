@@ -30,6 +30,7 @@
      -led                log LED (GPIO 0) changes with time and PC (led.txt)
      -dma                log EDMA transfers to dma_log.txt
      -spi                log SPI0 words, device and SCK to spi_log.txt
+     -flashlog           log SPI flash program/erase transactions to flash_log.txt
      -spilimit LCD:FLASH warn when actual SPI0 SCK exceeds these MHz (0 = off)
      -loadflash FILE     load a saved 4 MB flash image before the run
      -gpiolog            log all GPIO pin changes to gpio_log.txt
@@ -384,6 +385,8 @@ int main(int argc, char **argv)
             s->dmalf = fopen("dma_log.txt", "w");
         } else if (!strcmp(a, "-spi")) {
             s->spilf = fopen("spi_log.txt", "w");
+        } else if (!strcmp(a, "-flashlog")) {
+            s->flashlogf = fopen("flash_log.txt", "w");
         } else if (!strcmp(a, "-spilimit") && i + 1 < argc) {
             double lcd = 0, flash = 0;
             if (sscanf(argv[++i], "%lf:%lf", &lcd, &flash) == 2) {
@@ -668,6 +671,7 @@ int main(int argc, char **argv)
     if (s->gpiolf) fclose(s->gpiolf);
     if (s->dmalf) fclose(s->dmalf);
     if (s->spilf) fclose(s->spilf);
+    if (s->flashlogf) fclose(s->flashlogf);
     if (s->logf) fclose(s->logf);
     if (s->evf) fclose(s->evf);
     if (s->adcf) fclose(s->adcf);
