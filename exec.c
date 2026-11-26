@@ -218,6 +218,8 @@ static void branch_to(c6x_cpu *c, u32 target, int kind)
         c->br[c->nbr].due = c->cycle + 6;
         c->br[c->nbr].target = target;
         c->br[c->nbr].kind = (uint8_t)kind;
+        c->last_branch_target = target;
+        c->last_branch_pc = c->pc;
         c->nbr++;
         if (c->brtrace && c->brtracef) {
             const char *kind_name = kind == 0 ? "imm" : (kind == 1 ? "irp" : "nrp");

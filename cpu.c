@@ -220,7 +220,12 @@ c6x_packet *cpu_fetch_packet(c6x_cpu *c, uint32_t pc)
         c6x_insn *in = &p->ins[n];
         int sz = c6x_decode(fetch_cb, c->mem, a, in);
         if (sz == 0 || !in->valid) {
-            snprintf(c->err, sizeof c->err, "invalid instruction at 0x%08X (raw 0x%08X)", a, in->raw);
+            if (a == c->last_branch_target)
+                snprintf(c->err, sizeof c->err,
+                         "invalid instruction at 0x%08X (raw 0x%08X), indirect branch from %08X to %08X",
+                         a, in->raw, c->last_branch_pc, c->last_branch_target);
+            else
+                snprintf(c->err, sizeof c->err, "invalid instruction at 0x%08X (raw 0x%08X)", a, in->raw);
             return NULL;
         }
         in->sem = opc_sem[in->opc];

@@ -65,6 +65,7 @@ typedef struct c6x_cpu {
     uint32_t r[2][32];
     uint32_t cr[CR_COUNT];
     void (*on_dint)(struct c6x_cpu *c);   /* hardware-close IRQ residue hook */
+    uint32_t last_branch_target, last_branch_pc;  /* for invalid-target diagnostics */
     uint32_t pc;              /* address of the next execute packet to fetch */
     uint32_t cur_next;        /* address of the packet after the executing one */
     uint64_t cycle;

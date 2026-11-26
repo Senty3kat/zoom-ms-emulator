@@ -388,7 +388,7 @@ CFW может читать их оттуда, не трогая SPI1.
 | `load failed: -h` | У `c6xboot` нет ключа `-h`. Полный список ключей — в README, раздел «Диагностические опции», и в HOWTO, разделы 5, 9 и 10. |
 | `flash: missing ...` | Части прошивки должны лежать рядом и называться `129_main_OS.bin`, `133_data_133.bin`, `136_bootloader.bin`, `137_file_system.bin`. |
 | Эффект даёт тишину в `c6xzdl` | Для эффектов, которым нужна инициализация прошивкой, используйте `c6xboot` с полной прошивкой: ОС сама вызывает `_init`. Автономный `c6xzdl` этой инициализации не делает, поэтому его тишина не означает, что эффект не работает. |
-| `halted=1`, `ERROR` | Это краш, а не «ограничение эмулятора». Остановитесь и доложите. Для диагностики не используйте `-q`: он убирает `hot PCs`. |
+| `halted=1`, `ERROR` | Это краш, а не «ограничение эмулятора». Остановитесь и доложите. Для диагностики не используйте `-q`: он убирает `hot PCs`. Если в строке есть `indirect branch from ... to ...`, это переход по нулевому/мусорному указателю; адрес перехода показан. |
 | `AUDIO: frames=0`, `DSP load after 3 s: 100.0%` на ранней стадии загрузки | При `halted=0` и без `ERROR` это может быть нормальная стадия старта, особенно без `-flashfast`. Крашом считайте `halted=1` или `ERROR`. |
 | Кнопка «не удержалась» | `-press` по умолчанию держит 120 мс. Для удержания укажите длительность явно: `-press 4500:24:500`. |
 | Не могу найти логи | Все лог-файлы создаются в текущей рабочей директории, откуда запущен `c6xboot.exe`. Для проверки экрана есть ключ `-lcdlog` → `lcdlog.txt`. |
@@ -787,7 +787,7 @@ can read them there without touching SPI1.
 | `load failed: -h` | `c6xboot` has no `-h` option. The full key list is in README, "Diagnostic options", and in HOWTO sections 5, 9 and 10. |
 | `flash: missing ...` | The firmware parts must sit together and be named `129_main_OS.bin`, `133_data_133.bin`, `136_bootloader.bin`, `137_file_system.bin`. |
 | An effect is silent in `c6xzdl` | For effects that need firmware initialization, use `c6xboot` with the full firmware: the OS calls `_init` itself. The standalone `c6xzdl` does not do this, so silence there does not mean the effect is broken. |
-| `halted=1`, `ERROR` | This is a crash, not an "emulator limitation". Stop and report it. Do not use `-q` for diagnosis: it removes `hot PCs`. |
+| `halted=1`, `ERROR` | This is a crash, not an "emulator limitation". Stop and report it. Do not use `-q` for diagnosis: it removes `hot PCs`. If the line contains `indirect branch from ... to ...`, a zero/garbage function pointer was used; the branch target is shown. |
 | `AUDIO: frames=0`, `DSP load after 3 s: 100.0%` early in boot | With `halted=0` and no `ERROR` this can be a normal startup stage, especially without `-flashfast`. Treat `halted=1` or `ERROR` as a crash. |
 | A button press "did not stick" | `-press` holds for 120 ms by default. Give the duration explicitly: `-press 4500:24:500`. |
 | Cannot find the logs | All log files are written to the current working directory where `c6xboot.exe` was started. Use `-lcdlog` to write `lcdlog.txt` for display checks. |
