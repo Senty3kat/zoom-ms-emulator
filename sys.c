@@ -525,6 +525,12 @@ static void spi0_xfer(c6x_sys *s, uint32_t dat1)
         uint64_t bits = (fmt & 0x1F) ? (fmt & 0x1F) : 16, ps = ((fmt >> 8) & 0xFF) + 1;
         uint64_t dur = (bits + ((fmt >> 24) & 0x3F) + 2) * ps * 2, now = cpu_now(&s->cpu);
         double sck_mhz = s->cpu_hz / 2.0 / (double)ps / 1e6;
+        if (s->hwclose && s->hw_pending_irq && !s->hw_irq_seen) {
+            s->hw_pending_irq = 0;
+            if (s->cpu.cache) s->cpu.cache->hw_pending_irq = 1;
+            s->cpu.halted = 1;
+            fprintf(stderr, "HWclose: native IRQ residue after JumpClose, DINT missing\n");
+        }
         if (s->hwclose && lcd_sel && !s->hw_spifmt0_written) {
             s->hw_lcd_failed = 1;
             if (s->cpu.cache) s->cpu.cache->hw_lcd_failed = 1;
@@ -535,6 +541,11 @@ static void spi0_xfer(c6x_sys *s, uint32_t dat1)
             if (s->cpu.cache) s->cpu.cache->hw_lcd_failed = 1;
             s->cpu.halted = 1;
             fprintf(stderr, "HWclose: flash start failed, SPIFMT1 not written after JumpClose\n");
+        } else if (s->hwclose && lcd_sel && sck_mhz > 2.0) {
+            s->hw_lcd_failed = 1;
+            if (s->cpu.cache) s->cpu.cache->hw_lcd_failed = 1;
+            s->cpu.halted = 1;
+            fprintf(stderr, "HWclose: LCD start failed, SPIFMT0 too fast (SCK %.2f MHz > 2.00)\n", sck_mhz);
         }
         if (s->hwclose && s->hw_residual && lcd_sel) {
             s->hw_residual_cycles += dur / 4;
@@ -705,6 +716,7 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
         else if (off >= 0x40 && off < 0x50) s->evtflag[(off - 0x40) >> 2] &= ~val;
         else if (off >= 0x80 && off < 0x90) s->evtmask[(off - 0x80) >> 2] = val;
         else if (off >= 0x104 && off < 0x110) s->intmux[(off - 0x104) >> 2] = val;
+        if (off >= 0x40 && off < 0x50 && val & 0xFFF0u) s->hw_irq_seen = 1;
         R(a) = val;
         intc_update(s);
         return;
@@ -955,11 +967,21 @@ void sys_set_jump_cache(c6x_sys *s, int invalidate)
     if (invalidate) cache_invalidate_all(&s->cache);
 }
 
+static void hwclose_dint(c6x_cpu *c)
+{
+    c6x_sys *s = c->sys;
+    s->hw_irq_seen = 1;
+    if (s->cpu.cache) s->cpu.cache->hw_irq_seen = 1;
+}
+
 void sys_set_hwclose(c6x_sys *s, int enable, double rom_repaint_ms)
 {
     s->hwclose = enable;
     s->hw_rom_repaint_ms = rom_repaint_ms;
+    s->cpu.on_dint = enable ? hwclose_dint : NULL;
     s->cache.hw_lcd_failed = s->hw_lcd_failed;
+    s->cache.hw_pending_irq = s->hw_pending_irq;
+    s->cache.hw_irq_seen = s->hw_irq_seen;
     s->cache.hw_spifmt0_written = s->hw_spifmt0_written;
     s->cache.hw_spifmt1_written = s->hw_spifmt1_written;
     s->cache.hw_edma_seen = s->hw_edma_seen;
@@ -975,11 +997,20 @@ void sys_hwclose_jump_reset(c6x_sys *s)
     s->hw_lcd_failed = 0;
     s->hw_spifmt0_written = s->hw_spifmt1_written = 0;
     s->hw_edma_seen = s->hw_mcasp_seen = s->hw_usb_seen = 0;
+    s->hw_irq_seen = 0;
+    if (s->hwclose && !s->hw_irq_seen) {
+        s->hw_pending_irq = 1;         /* synthetic native IRQ residue after JumpClose */
+        s->cpu.cr[CR_IER] |= 1u << 1;  /* NMIE */
+        s->cpu.cr[CR_IFR] |= 1u << 4;  /* INT4 */
+        s->cpu.cr[CR_TSR] |= TSR_GIE;
+    } else s->hw_pending_irq = 0;
     s->hw_residual = 1;
     s->hw_residual_cycles = 0;
     s->hw_repaints = 0;
     s->hw_next_repaint = cpu_now(&s->cpu) + (uint64_t)(s->hw_rom_repaint_ms * 1000.0 * (s->cpu_hz / 1e6));
     s->cache.hw_lcd_failed = s->hw_lcd_failed;
+    s->cache.hw_pending_irq = s->hw_pending_irq;
+    s->cache.hw_irq_seen = s->hw_irq_seen;
     s->cache.hw_spifmt0_written = s->hw_spifmt0_written;
     s->cache.hw_spifmt1_written = s->hw_spifmt1_written;
     s->cache.hw_edma_seen = s->hw_edma_seen;

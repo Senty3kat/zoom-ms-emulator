@@ -40,6 +40,8 @@ typedef struct c6x_sys {
     int hwclose;                 /* -hwclose: hardware-close start model */
     int hw_lcd_failed;           /* fatal unsafe SPI format for LCD/start */
     int hw_residual;             /* EDMA/McASP/USB left active after boot ROM */
+    int hw_pending_irq;          /* pending maskable IRQ left by boot ROM */
+    int hw_irq_seen;             /* firmware used ICR/CSR to clear pending IRQ */
     int hw_edma_seen, hw_mcasp_seen, hw_usb_seen;  /* quiesce write-tracking */
     int hw_spifmt0_written, hw_spifmt1_written;    /* write-tracking after JumpClose */
     uint64_t hw_residual_cycles; /* extra LCD cycles caused by residue */

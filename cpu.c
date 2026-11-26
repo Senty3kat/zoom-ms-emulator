@@ -39,8 +39,10 @@ void cpu_init(c6x_cpu *c, c6x_mem *m)
 
 void cpu_reset(c6x_cpu *c, uint32_t pc)
 {
+    void (*on_dint)(struct c6x_cpu *c) = c->on_dint;
     memset(c->r, 0, sizeof c->r);
     memset(c->cr, 0, sizeof c->cr);
+    c->on_dint = on_dint;
     memset(c->npend, 0, sizeof c->npend);
     memset(&c->lb, 0, sizeof c->lb);
     c->nbr = 0;
@@ -78,6 +80,7 @@ void cpu_wr_ctrl(c6x_cpu *c, int id, uint32_t v)
     case CR_CSR: {
         uint32_t sat = (v & (1u << 9)) ? (c->cr[CR_CSR] & (1u << 9)) : 0;
         c->cr[CR_CSR] = (v & 0xFC00u) | sat;
+        if (!(v & 1) && c->on_dint) c->on_dint(c);
         c->cr[CR_TSR] = (c->cr[CR_TSR] & ~TSR_GIE) | (v & 1 ? TSR_GIE : 0);
         c->cr[CR_ITSR] = (c->cr[CR_ITSR] & ~TSR_GIE) | (v & 2 ? TSR_GIE : 0);
         return;

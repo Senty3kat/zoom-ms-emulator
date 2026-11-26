@@ -361,8 +361,9 @@ void cache_report(c6x_cache *k, FILE *f)
     if (k->hw_lcd_failed || k->hw_spifmt0_written || k->hw_spifmt1_written ||
         k->hw_edma_seen || k->hw_mcasp_seen || k->hw_usb_seen || k->hw_repaints ||
         k->hw_residual_cycles)
-        fprintf(f, "HWclose: lcd_failed=%d spifmt0=%d spifmt1=%d quiesce=%d/%d/%d residual=%d repaints=%u residual_cycles=%llu\n",
-                k->hw_lcd_failed, k->hw_spifmt0_written, k->hw_spifmt1_written,
+        fprintf(f, "HWclose: lcd_failed=%d irq_residue=%d irq_seen=%d spifmt0=%d spifmt1=%d quiesce=%d/%d/%d residual=%d repaints=%u residual_cycles=%llu\n",
+                k->hw_lcd_failed, k->hw_pending_irq, k->hw_irq_seen,
+                k->hw_spifmt0_written, k->hw_spifmt1_written,
                 k->hw_edma_seen, k->hw_mcasp_seen, k->hw_usb_seen,
                 k->hw_residual, k->hw_repaints, (unsigned long long)k->hw_residual_cycles);
     fprintf(f, "  penalties: L1P<-L2 %d, L1D<-L2SRAM %d, L1D<-L2$ %d, SDRAM line %d, writeback %d, uncached %d, MMIO %d\n",

@@ -362,6 +362,7 @@ void exec_insn(c6x_cpu *c, const c6x_insn *in)
         t = (t & ~TSR_SGIE) | ((t & TSR_GIE) ? TSR_SGIE : 0);
         t &= ~TSR_GIE;
         c->cr[CR_TSR] = t;
+        if (c->on_dint) c->on_dint(c);
         return;
     }
     case S_RINT: {

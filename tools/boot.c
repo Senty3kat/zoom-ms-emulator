@@ -468,6 +468,8 @@ int main(int argc, char **argv)
     if (rom_repaint > 0) s->hw_rom_repaint_ms = rom_repaint;
     if (hwclose && s->cpu.cache) {
         s->cpu.cache->hw_lcd_failed = s->hw_lcd_failed;
+        s->cpu.cache->hw_pending_irq = s->hw_pending_irq;
+        s->cpu.cache->hw_irq_seen = s->hw_irq_seen;
         s->cpu.cache->hw_spifmt0_written = s->hw_spifmt0_written;
         s->cpu.cache->hw_spifmt1_written = s->hw_spifmt1_written;
         s->cpu.cache->hw_edma_seen = s->hw_edma_seen;
