@@ -293,8 +293,9 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-bootflash` | взять AIS из собранной 4 МБ флеши по `0x40000`, а не из аргумента; ближе к пути BIN/136 | консоль |
 | `-hwclose` | hardware-close старт включён по умолчанию: останов без записи SPIFMT0/1, диагностический порог LCD SPI 25 МГц, synthetic native IRQ residue без `DINT`, учёт остаточной периферии boot ROM; `-no-hwclose` отключает. Порог эмулятора, не измеренный предел железа | stderr |
 | `-hwlcdlimit МГЦ` | переопределить диагностический порог LCD SPI для `-hwclose`; по умолчанию 25 МГц | stderr |
-| `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются | stdout |
-| `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux | stdout |
+| `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются. Рекомендуется для всех bare-metal прогонов | stdout |
+| `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux; быстро ловит firmware, который не вернул LCD mux после flash_read | stdout |
+| `-flashfault wp,wip,rx,long,mux` | опциональные отказы SPI flash: `wp` игнорирует WREN, `wip` не сбрасывает WIP, `rx` не готовит SPIBUF RX, `long` возвращает FF в длинном чтении, `mux` блокирует flash-слово при чужом CS/mux; по умолчанию выключено | stdout |
 | `-romrepaint МС` | период синтетической перерисовки boot-лого при `-hwclose`; диагностический параметр, не hardware-факт | stderr |
 | `-bootlog` | ловить bootmini-чекпоинты по однородным LCD-кадрам и логировать копирование FWIMG | `boot_log.txt` |
 | `-otacheck ФАЙЛ A/B` | сравнить содержимое слота A/B с FWIMG после прогона OTA | stdout |

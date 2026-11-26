@@ -115,6 +115,8 @@ typedef struct c6x_sys {
     FILE *flashlogf;          /* -flashlog: flash program/erase transactions */
     uint32_t fl_log_addr;     /* address assembled from the 3 address bytes */
     uint8_t fl_log_cmd;       /* command byte at the start of the transaction */
+    uint32_t flash_fault;     /* optional -flashfault mask: 1 WP, 2 WIP, 4 RX, 8 LONG, 16 MUX */
+    uint64_t flash_fault_events; /* fault actions applied / blocked words */
     uint8_t fl_log_have;      /* address has been fully received */
 
     /* EDMA3 channel controller (single shared view of all regions) */

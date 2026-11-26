@@ -62,6 +62,9 @@
      -no-hwclose         disable the default hardware-close model (A/B only)
      -muxstrict          honor PINMUX7 CS ownership (LCD needs mux 8, flash needs 0/1)
      -muxhalt            fatal stop when -muxstrict blocks an LCD write
+     -flashfault MODE     optional hardware-close SPI flash faults: wp,wip,rx,long,mux
+                          wp=ignore WREN, wip=WIP never clears, rx=SPIBUF RX never ready,
+                          long=long reads return 0xFF, mux=bad CS writes are dropped
      -hwlcdlimit MHZ     fatal LCD SCK threshold for -hwclose (default 25, diagnostic only)
      -romrepaint MS      synthetic boot-logo repaint period for -hwclose (diagnostic only)
      -bootlog            log bootmini checkpoints and FWIMG copy writes to boot_log.txt
@@ -289,6 +292,20 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-hwclose")) hwclose = 1;
         else if (!strcmp(a, "-no-hwclose")) hwclose = 0;
         else if (!strcmp(a, "-muxstrict")) s->muxstrict = 1;
+        else if (!strcmp(a, "-flashfault") && i + 1 < argc) {
+            const char *m = argv[++i];
+            uint32_t mask = 0;
+            for (; *m; m++) {
+                if (*m == ',' || *m == '-') continue;
+                else if (!strcmp(m, "wp")) { mask |= 1; m++; }
+                else if (!strcmp(m, "wip")) { mask |= 2; m += 2; }
+                else if (!strcmp(m, "rx")) { mask |= 4; m++; }
+                else if (!strcmp(m, "long")) { mask |= 8; m += 3; }
+                else if (!strcmp(m, "mux")) { mask |= 16; m += 2; }
+                else { fprintf(stderr, "-flashfault: unknown mode '%s'\n", m); return 1; }
+            }
+            s->flash_fault = mask;
+        }
         else if (!strcmp(a, "-muxhalt")) { s->muxstrict = 1; s->muxhalt = 1; }
         else if (!strcmp(a, "-hwlcdlimit") && i + 1 < argc) {
             double mhz = atof(argv[++i]);
@@ -626,6 +643,9 @@ int main(int argc, char **argv)
                s->boot_cp, s->boot_copy_bytes, s->boot_copy_first, s->boot_copy_last);
     }
     printf("FLASH: reads=%u writes=%u erases=%u\n", s->fl_reads, s->fl_writes, s->fl_erases);
+    if (s->flash_fault)
+        printf("FLASHFAULT: mask=%u events=%llu WIP=%u\n",
+               s->flash_fault, (unsigned long long)s->flash_fault_events, s->fl_status & 1);
     if (s->muxstrict)
         printf("MUXSTRICT: lcd_drop=%u flash_drop=%u\n", s->mux_lcd_drop, s->mux_flash_drop);
     if (s->mem.stale_snap)

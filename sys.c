@@ -450,7 +450,10 @@ static uint8_t flash_byte(c6x_sys *s, uint8_t b)
         s->fl_log_cmd = b;
         s->fl_log_have = 0;
         switch (b) {
-        case 0x06: s->fl_status |= 2; break;       /* WREN */
+        case 0x06:                                 /* WREN; optional write-protect fault */
+            if (!(s->flash_fault & 1)) s->fl_status |= 2;
+            else s->flash_fault_events++;
+            break;
         case 0x04: s->fl_status &= ~2; break;      /* WRDI */
         case 0xC7: case 0x60:                      /* chip erase */
             if (s->fl_status & 2) {
@@ -464,13 +467,19 @@ static uint8_t flash_byte(c6x_sys *s, uint8_t b)
         return out;
     }
     switch (s->fl_cmd) {
-    case 0x05: return s->fl_status;               /* RDSR */
+    case 0x05:                                    /* RDSR; WIP may be stuck by fault */
+        if (s->flash_fault & 2) return s->fl_status | 1;
+        return s->fl_status;
     case 0x9F: { static const uint8_t id[3] = { 0xC2, 0x20, 0x16 }; return id[(n - 1) % 3]; }
     case 0x90: case 0xAB: return (n >= 4) ? ((n & 1) ? 0x15 : 0xC2) : 0xFF;
     case 0x03: case 0x0B:                          /* READ / FAST READ */
         if (n <= 3) { s->fl_addr = (s->fl_addr << 8) | b; return out; }
         if (s->fl_cmd == 0x0B && n == 4) return out;
         out = s->flash[s->fl_addr % s->flash_size];
+        if ((s->flash_fault & 8) && n >= 5) {        /* long read fails after address/dummy */
+            out = 0xFF;
+            s->flash_fault_events++;
+        }
         s->fl_addr++;
         s->fl_reads++;
         return out;
@@ -562,6 +571,20 @@ static void spi0_xfer(c6x_sys *s, uint32_t dat1)
     }
     s->spibuf = rx;
     s->spi_rx_valid = 1;
+    if ((s->flash_fault & 4) && s->fl_active) {     /* SPIBUF never becomes ready for flash */
+        s->spi_rx_valid = 0;
+        s->spi_done = UINT64_MAX;
+        s->flash_fault_events++;
+    }
+    if ((s->flash_fault & 16) && s->muxstrict && s->flash && flash_sel && cs_mux == 8) {
+        s->mux_flash_drop++;
+        s->flash_fault_events++;
+        if (s->muxhalt && !s->cpu.halted) {
+            s->cpu.halted = 1;
+            snprintf(s->cpu.err, sizeof s->cpu.err,
+                     "SPI0 FLASH write with PINMUX7 CS mux=8 (expected 0 or 1)");
+        }
+    }
     /* Shift time: CHARLEN bits at SYSCLK2 / (PRESCALE + 1), SYSCLK2 = core / 2 (fixed ratio),
        plus WDELAY + 2 SPI clocks between words. The data moves at once; SPIBUF says RXEMPTY
        and TXFULL until then, so polling drivers take the real time (LCD 1 MHz, flash 50 MHz). */
