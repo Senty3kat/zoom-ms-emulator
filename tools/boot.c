@@ -56,6 +56,7 @@
      -cachejump          invalidate L1D/L2/L1P at AIS JumpClose (real bootmini start)
      -bootflash          load AIS from the assembled flash at 0x40000 (host-side BIN/136 path)
      -hwclose            hardware-close start: require SPIFMT writes, model boot-ROM residue
+     -hwlcdlimit MHZ     fatal LCD SCK threshold for -hwclose (default 25, diagnostic only)
      -romrepaint MS      synthetic boot-logo repaint period for -hwclose (diagnostic only)
      -bootlog            log bootmini checkpoints and FWIMG copy writes to boot_log.txt
      -otacheck FILE A/B  compare flash slot with FWIMG after the run
@@ -273,6 +274,11 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-cachejump")) jump_cache = 1;
         else if (!strcmp(a, "-bootflash")) boot_flash = 1;
         else if (!strcmp(a, "-hwclose")) hwclose = 1;
+        else if (!strcmp(a, "-hwlcdlimit") && i + 1 < argc) {
+            double mhz = atof(argv[++i]);
+            if (mhz > 0) s->hw_lcd_max_mhz = mhz;
+            else fprintf(stderr, "-hwlcdlimit: ignored non-positive %.2f\n", mhz);
+        }
         else if (!strcmp(a, "-romrepaint") && i + 1 < argc) rom_repaint = atof(argv[++i]);
         else if (!strcmp(a, "-bootlog")) bootlogf = fopen("boot_log.txt", "w");
         else if (!strcmp(a, "-otacheck") && i + 2 < argc) {

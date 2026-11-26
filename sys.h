@@ -39,6 +39,7 @@ typedef struct c6x_sys {
     double spi_lcd_max, spi_flash_max;  /* -spilimit, MHz; 0 = no check */
     int spi_limit_warned;
     int hwclose;                 /* -hwclose: hardware-close start model */
+    double hw_lcd_max_mhz;       /* fatal LCD SCK threshold in -hwclose, default 25 */
     int hw_lcd_failed;           /* fatal unsafe SPI format for LCD/start */
     int hw_residual;             /* EDMA/McASP/USB left active after boot ROM */
     int hw_pending_irq;          /* pending maskable IRQ left by boot ROM */

@@ -577,11 +577,12 @@ static void spi0_xfer(c6x_sys *s, uint32_t dat1)
             if (s->cpu.cache) s->cpu.cache->hw_lcd_failed = 1;
             s->cpu.halted = 1;
             fprintf(stderr, "HWclose: flash start failed, SPIFMT1 not written after JumpClose\n");
-        } else if (s->hwclose && lcd_sel && sck_mhz > 2.0) {
+        } else if (s->hwclose && lcd_sel && sck_mhz > s->hw_lcd_max_mhz) {
             s->hw_lcd_failed = 1;
             if (s->cpu.cache) s->cpu.cache->hw_lcd_failed = 1;
             s->cpu.halted = 1;
-            fprintf(stderr, "HWclose: LCD start failed, SPIFMT0 too fast (SCK %.2f MHz > 2.00)\n", sck_mhz);
+            fprintf(stderr, "HWclose: LCD start failed, SPIFMT0 too fast (SCK %.2f MHz > %.2f)\n",
+                    sck_mhz, s->hw_lcd_max_mhz);
         }
         if (s->hwclose && s->hw_residual && lcd_sel) {
             s->hw_residual_cycles += dur / 4;
@@ -890,6 +891,7 @@ c6x_sys *sys_create(void)
     cache_init(&s->cache, 300, 150);   /* EMIFB clock assumed SYSCLK/2; scales with the PLL */
     s->cpu.cache = &s->cache;
     s->cpu_hz = 300000000;
+    s->hw_lcd_max_mhz = 25.0;    /* provisional bracket: hardware works at 2.02, hangs at 68 MHz */
     s->timer_hz = 24000000;
     s->lcd_dc_pin = 37;
     s->lcd_cs_pin = 91;
