@@ -543,7 +543,16 @@ static void spi0_xfer(c6x_sys *s, uint32_t dat1)
        0 is the reset value the bootloader reads flash with. */
     uint32_t cs_mux = R(0x01C1413C) >> 28;
     int flash_sel = cs_mux == 0 || cs_mux == 1;
-    if (lcd_sel) {
+    if (s->muxstrict && lcd_sel && cs_mux != 8) {
+        s->mux_lcd_drop++;
+        if (s->muxhalt && !s->cpu.halted) {
+            s->cpu.halted = 1;
+            snprintf(s->cpu.err, sizeof s->cpu.err,
+                     "SPI0 LCD write with PINMUX7 CS mux=%u (expected 8 for GPIO/LCD)", cs_mux);
+        }
+    } else if (s->muxstrict && s->flash && flash_sel && cs_mux == 8) {
+        s->mux_flash_drop++;
+    } else if (lcd_sel) {
         int dc = s->lcd_dc_pin >= 0 ? gpio_bit(s, s->lcd_dc_pin) : 1;
         lcd_byte(s, b, dc);
     } else if (s->flash && flash_sel) {
