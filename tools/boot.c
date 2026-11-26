@@ -55,6 +55,7 @@
      -bootflash          load AIS from the assembled flash at 0x40000 (host-side BIN/136 path)
      -hwclose            hardware-close start: require SPIFMT writes, model boot-ROM residue
      -romrepaint MS      synthetic boot-logo repaint period for -hwclose (diagnostic only)
+     -bootlog            log bootmini checkpoints and FWIMG copy writes to boot_log.txt
      -q                  short report */
 #include <stdio.h>
 #include <stdlib.h>
@@ -72,6 +73,7 @@ static FILE *probef, *wwf;
 static uint64_t ww_from;
 static int g_cachepen[4] = { -1, -1, -1, -1 };  /* -cachepen overrides: 1D->2SRAM, 1D->2C, L2 fill, uncached */
 static FILE *callf;                       /* -call */
+static FILE *bootlogf;                    /* -bootlog */
 static uint32_t g_calls[16]; static int g_ncalls;
 static uint64_t g_prof_from, g_prof_to;   /* -prof window, CPU cycles */
 static double g_prof_sec0, g_prof_sec1;   /* as entered, for reporting */
@@ -267,6 +269,7 @@ int main(int argc, char **argv)
         else if (!strcmp(a, "-bootflash")) boot_flash = 1;
         else if (!strcmp(a, "-hwclose")) hwclose = 1;
         else if (!strcmp(a, "-romrepaint") && i + 1 < argc) rom_repaint = atof(argv[++i]);
+        else if (!strcmp(a, "-bootlog")) bootlogf = fopen("boot_log.txt", "w");
         else if (!strcmp(a, "-t") && i + 1 < argc) trace_from = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-tl") && i + 1 < argc) trace_len = strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-m")) s->logf = fopen("mmio.txt", "w");
@@ -461,6 +464,7 @@ int main(int argc, char **argv)
         else if (a[0] == '-') { fprintf(stderr, "unknown option %s\n", a); return 1; }
         else secs = atof(a) / 300.0;  /* legacy: Mcycles */
     }
+    if (bootlogf) s->bootlogf = bootlogf;
     sys_set_hwclose(s, hwclose, rom_repaint);
     sys_set_jump_stack(s, jump_stack);
     sys_set_jump_cache(s, jump_cache);
@@ -561,6 +565,12 @@ int main(int argc, char **argv)
         sys_report_mmio(s, stdout);
     }
     printf("LCD: cmds=%u data=%u contrast=%u  LED(GPIO0)=%u\n", s->lcd_cmds, s->lcd_data, s->lcd_contrast, s->gpio_out[0] & 1);
+    if (bootlogf) {
+        fprintf(bootlogf, "bootmini: last checkpoint=%d pc=%08X, FWIMG copy %u bytes from %08X to %08X\n",
+                s->boot_cp, s->boot_cp_pc, s->boot_copy_bytes, s->boot_copy_first, s->boot_copy_last);
+        printf("BOOTMINI: last checkpoint=%d, FWIMG copy %u bytes %08X..%08X -> boot_log.txt\n",
+               s->boot_cp, s->boot_copy_bytes, s->boot_copy_first, s->boot_copy_last);
+    }
     printf("FLASH: reads=%u writes=%u erases=%u\n", s->fl_reads, s->fl_writes, s->fl_erases);
     printf("SPI0: shifting %.1f ms of %.1f ms; flash program/erase %.1f ms\n", s->spi_busy * 1000.0 / s->cpu_hz,
            cpu_now(&s->cpu) * 1000.0 / s->cpu_hz, s->fl_busy * 1000.0 / s->cpu_hz);

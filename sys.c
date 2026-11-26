@@ -396,6 +396,10 @@ static void lcd_byte(c6x_sys *s, uint8_t b, int data)
     if (data) {
         uint32_t col = (s->lcd_col_hi << 4) | s->lcd_col_lo;
         if (col < 132) s->lcd_vram[s->lcd_page & 7][col] = b;
+        if (s->lcd_frame_data < 128) {
+            if (!s->lcd_frame_data) memset(s->boot_cp_row, b, sizeof s->boot_cp_row);
+            else if (s->boot_cp_row[s->lcd_frame_data] != b) s->boot_cp_row[s->lcd_frame_data] = 0;
+        }
         col++;
         s->lcd_col_hi = (col >> 4) & 15; s->lcd_col_lo = col & 15;
         s->lcd_data++;
@@ -404,8 +408,21 @@ static void lcd_byte(c6x_sys *s, uint8_t b, int data)
     }
     s->lcd_cmds++;
     if (s->lcd_contrast_pending) { s->lcd_contrast = b & 63; s->lcd_contrast_pending = 0; return; }
-    if (s->lcdf && (b & 0xF8) == 0xB0) {
+    if (s->lcdf && (b & 0xF8) == 0xB0)
         fprintf(s->lcdf, "%9.3f ms page %u pc=%08X B3=%08X prev=%u\n", sys_wall(s) * 1000.0, b & 7, s->cpu.cr[CR_PCE1], s->cpu.r[1][3], s->lcd_frame_data);
+    if ((b & 0xF8) == 0xB0) {
+        uint8_t v = s->boot_cp_row[0];
+        int uniform = s->lcd_frame_data >= 128 && v != 0;
+        for (int i = 1; i < 128; i++) if (s->boot_cp_row[i] != v) uniform = 0;
+        s->boot_cp_pages = uniform ? s->boot_cp_pages + 1 : 0;
+        if (uniform && (b & 7) == 0) {
+            int cp = v == 0xAA ? 9 : v == 0x55 ? 10 : s->boot_cp + 1;
+            if (cp > 10) cp = 10;
+            s->boot_cp = cp;
+            s->boot_cp_pc = (int)s->cpu.cr[CR_PCE1];
+            if (s->bootlogf) fprintf(s->bootlogf, "%9.3f ms bootmini checkpoint %d (row %02X pc=%08X)\n",
+                                     sys_wall(s) * 1000.0, cp, v, s->boot_cp_pc);
+        }
         s->lcd_frame_data = 0;
     }
     if ((b & 0xF0) == 0xB0) s->lcd_page = b & 15;
@@ -962,6 +979,20 @@ void sys_set_jump_stack(c6x_sys *s, uint32_t b15)
 /* AIS SectionLoad changes memory while the cache model keeps its old tags.
    Real bootmini invalidates L1D/L2/L1P before calling C. -cachejump applies the
    same operation at the model entry so stale lines cannot hide that dependency. */
+void sys_bootlog_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
+{
+    if (!s->bootlogf) return;
+    uint32_t pc = s->cpu.cr[CR_PCE1];
+    if (pc < 0xC00F0000u || pc >= 0xC00F7000u) return;   /* bootmini code only */
+    if (addr < 0xC0000000u || addr >= 0xC00F0000u) return; /* firmware copy range */
+    if (!s->boot_copy_bytes) s->boot_copy_first = addr;
+    s->boot_copy_last = addr;
+    s->boot_copy_bytes += (uint32_t)size;
+    if ((s->boot_copy_bytes & 0x3Fu) < (uint32_t)size)
+        fprintf(s->bootlogf, "%9.3f ms FWIMG copy %08X size=%d pc=%08X val=%08X\n",
+                sys_wall(s) * 1000.0, addr, size, pc, val);
+}
+
 void sys_set_jump_cache(c6x_sys *s, int invalidate)
 {
     if (invalidate) cache_invalidate_all(&s->cache);

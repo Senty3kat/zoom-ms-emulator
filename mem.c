@@ -2,6 +2,12 @@
 #include <string.h>
 #include <stdio.h>
 #include "mem.h"
+#include "sys.h"
+
+static void bootlog_hook(struct c6x_sys *s, uint32_t addr, int size, uint32_t val)
+{
+    sys_bootlog_write(s, addr, size, val);
+}
 
 void mem_init(c6x_mem *m)
 {
@@ -81,6 +87,7 @@ uint32_t mem_rd(c6x_mem *m, uint32_t addr, int size)
 void mem_wr(c6x_mem *m, uint32_t addr, int size, uint32_t val)
 {
     uint8_t *p = mem_ptr(m, addr);
+    if (m->sys && m->sys->bootlogf) bootlog_hook(m->sys, addr, size, val);
     if (addr >= m->wwatch_lo && addr < m->wwatch_hi && m->on_wwatch) m->on_wwatch(m->sys, addr, size, val);
     if (p) {
         mem_code_touch(m, addr);

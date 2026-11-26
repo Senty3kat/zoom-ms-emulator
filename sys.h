@@ -28,6 +28,7 @@ typedef struct c6x_sys {
     uint32_t watch_lo, watch_hi;   /* log reads in [lo, hi) with PC */
     FILE *logf;
     FILE *lcdf;               /* -lcdlog: each LCD page select (page 0 = frame start) */
+    FILE *bootlogf;           /* -bootlog: bootmini checkpoints and FWIMG copy map */
     FILE *adcf;               /* -adclog: SPI1 SPIDAT1/0 writes (ADC poll) */
     FILE *evf;                /* -evlog: DSP/BIOS event posts (diagnostics) */
     uint32_t lcd_frame_data;  /* data bytes since the last page-0 select */
@@ -48,6 +49,11 @@ typedef struct c6x_sys {
     double hw_rom_repaint_ms;    /* -romrepaint MS, 0 = no synthetic repaint */
     uint64_t hw_next_repaint;    /* next synthetic boot-logo repaint */
     uint32_t hw_repaints;
+    int boot_cp;              /* last full-frame checkpoint value */
+    uint32_t boot_cp_pages;   /* uniform pages in the current frame */
+    uint8_t boot_cp_row[128]; /* current page bytes */
+    int boot_cp_pc;           /* PC of the page command that closed a checkpoint */
+    uint32_t boot_copy_first, boot_copy_last, boot_copy_bytes;
 
     /* DSP interrupt controller */
     uint32_t evtflag[4];      /* 128 events */
@@ -156,6 +162,7 @@ int sys_load_ais(c6x_sys *s, const char *path);
 int sys_load_ais_from_flash(c6x_sys *s, uint32_t off, uint32_t maxlen, uint32_t *len_out);
 void sys_set_jump_stack(c6x_sys *s, uint32_t b15);   /* -stack: B15 after JumpClose */
 void sys_set_jump_cache(c6x_sys *s, int invalidate); /* -cachejump: invalidate caches after JumpClose */
+void sys_bootlog_write(c6x_sys *s, uint32_t addr, int size, uint32_t val);
 void sys_set_hwclose(c6x_sys *s, int enable, double rom_repaint_ms);
 void sys_hwclose_jump_reset(c6x_sys *s);
 int sys_load_flash_parts(c6x_sys *s, const char *dir);
