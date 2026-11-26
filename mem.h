@@ -37,6 +37,12 @@ typedef struct c6x_mem {
     uint32_t unmapped_reads, unmapped_writes;
     uint32_t wwatch_lo, wwatch_hi;  /* RAM write watch range */
     void (*on_wwatch)(struct c6x_sys *s, uint32_t addr, int size, uint32_t val);
+
+    /* -s3kstale: instruction fetch keeps pre-copy bytes until L1P/L2 invalidate */
+    uint32_t stale_lo, stale_hi;
+    uint8_t *stale_snap;
+    uint8_t stale_armed, stale_active;
+    uint64_t stale_fetches;
 } c6x_mem;
 
 void mem_init(c6x_mem *m);
@@ -44,6 +50,10 @@ void mem_free(c6x_mem *m);
 uint8_t *mem_add_ram(c6x_mem *m, const char *name, uint32_t base, uint32_t size, uint32_t alias);
 int mem_load(c6x_mem *m, uint32_t addr, const void *data, uint32_t len);
 int mem_read_block(c6x_mem *m, uint32_t addr, void *out, uint32_t len);
+int mem_fetch_block(c6x_mem *m, uint32_t addr, void *out, uint32_t len);  /* instruction fetch with stale overlay */
+void mem_stale_region(c6x_mem *m, uint32_t lo, uint32_t len);
+void mem_stale_clear(c6x_mem *m);
+void mem_stale_on_invalidate(c6x_mem *m, uint32_t addr, uint32_t val);
 void mem_mirror(c6x_mem *m, uint32_t src, uint32_t size, uint32_t dst, uint32_t span);
 
 static inline uint8_t *mem_ptr(c6x_mem *m, uint32_t addr)

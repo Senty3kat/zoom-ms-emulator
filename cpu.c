@@ -21,7 +21,7 @@ static const struct { const char *n; int id; } ctrl_names[] = {
 
 int cpu_ctrl_index(int id) { return (id >= 0 && id < 64) ? ctrl_map[id] : CR_REP; }
 
-static int fetch_cb(void *ctx, uint32_t a, uint8_t out[32]) { return mem_read_block(ctx, a, out, 32); }
+static int fetch_cb(void *ctx, uint32_t a, uint8_t out[32]) { return mem_fetch_block(ctx, a, out, 32); }
 
 void cpu_init(c6x_cpu *c, c6x_mem *m)
 {

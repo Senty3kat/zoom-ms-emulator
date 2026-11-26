@@ -308,6 +308,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-spi` | каждое слово SPI0: устройство, PC, формат, фактический SCK | `spi_log.txt` |
 | `-flashlog` | реальные записи/стирания SPI flash: такт, `fl_addr`, `fl_cmd`, `fl_writes`, адрес/байт записи или диапазон стирания; позволяет отличить перезапись `FW_META` от stale-чтения bootmini | `flash_log.txt` |
 | `-stwtrace ФАЙЛ[,АДР:ДЛИНА]` | каждая инструкция `STW` в окне буфера вывода: такт, PC, `left i` или `right i`, адрес, регистр-источник, значение и float; по умолчанию `11F04100:40` | указанный файл |
+| `-s3kstale [АДР:ДЛИНА]` | выборка команд из региона S3K возвращает старые байты после копии до инвалидации L1P/L2; по умолчанию `C0300000:10000` | stdout |
 | `-spilimit LCD:FLASH` | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку. Рекомендуется явно задавать `1:50`: при 408 МГц со стоковыми делителями флеш SPI0 может получить 68 МГц, а по умолчанию эмулятор не считает это отказом | stderr |
 | `-gpiolog` | все изменения ног GPIO со временем и PC | `gpio_log.txt` |
 | `-prof T1:T2` | гистограмма PC только в окне времени | stdout |
@@ -712,6 +713,7 @@ overhead, not useful effect work.
 | `-spi` | every SPI0 word: device, PC, format, actual SCK | `spi_log.txt` |
 | `-flashlog` | real SPI flash program/erase transactions: cycle, `fl_addr`, `fl_cmd`, `fl_writes`, written address/byte or erase range; distinguishes an actual `FW_META` rewrite from stale bootmini reads | `flash_log.txt` |
 | `-stwtrace FILE[,ADDR:LEN]` | each `STW` in the output-buffer window: cycle, PC, `left i` or `right i`, address, source register, value and float; default `11F04100:40` | chosen file |
+| `-s3kstale [ADDR:LEN]` | instruction fetch from the S3K region returns pre-copy bytes until an L1P/L2 invalidate; default `C0300000:10000` | stdout |
 | `-spilimit LCD:FLASH` | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check. Recommended explicitly: at 408 MHz with stock dividers SPI0 flash can reach 68 MHz, while the emulator does not treat this as a failure by default | stderr |
 | `-gpiolog` | all GPIO pin changes with time and PC | `gpio_log.txt` |
 | `-prof T1:T2` | PC histogram only inside a time window | stdout |

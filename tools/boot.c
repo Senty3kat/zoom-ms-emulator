@@ -54,6 +54,7 @@
      -dump ADDR LEN      hex dump at the end
      -stack ADDR         set B15 at AIS JumpClose (e.g. C00F7000 for DU6 bootmini)
      -cachejump          invalidate L1D/L2/L1P at AIS JumpClose (real bootmini start)
+     -s3kstale [ADDR:LEN] model stale instruction fetch after S3K copy (default C0300000:10000)
      -bootflash          load AIS from the assembled flash at 0x40000 (host-side BIN/136 path)
      -hwclose            hardware-close start: require SPIFMT writes, model boot-ROM residue
      -hwlcdlimit MHZ     fatal LCD SCK threshold for -hwclose (default 25, diagnostic only)
@@ -88,6 +89,7 @@ static const char *g_loadflash;
 static char g_otacheck_path[512]; static int g_otacheck_slot = -1;
 static int g_oc_warned;
 static const char *g_stwtrace;
+static const char *g_s3kstale;
 
 /* -audioload: cycle-accurate cost of the L2 ZDL dispatcher calls */
 typedef struct { uint32_t addr; uint64_t calls, cycles; } audiorec;
@@ -272,6 +274,10 @@ int main(int argc, char **argv)
         if (!strcmp(a, "-s") && i + 1 < argc) secs = atof(argv[++i]);
         else if (!strcmp(a, "-stack") && i + 1 < argc) jump_stack = (uint32_t)strtoull(argv[++i], NULL, 0);
         else if (!strcmp(a, "-cachejump")) jump_cache = 1;
+        else if (!strcmp(a, "-s3kstale")) {
+            g_s3kstale = "C0300000:10000";
+            if (i + 1 < argc && argv[i + 1][0] != '-' && strchr(argv[i + 1], ':')) g_s3kstale = argv[++i];
+        }
         else if (!strcmp(a, "-bootflash")) boot_flash = 1;
         else if (!strcmp(a, "-hwclose")) hwclose = 1;
         else if (!strcmp(a, "-hwlcdlimit") && i + 1 < argc) {
@@ -536,6 +542,21 @@ int main(int argc, char **argv)
     s->cpu.on_bp = on_bp;
     s->on_clock = on_clock;
     g_total = MS(secs * 1000);
+    if (g_s3kstale) {
+        const char *colon = strchr(g_s3kstale, ':');
+        uint32_t lo = 0xC0300000u, len = 0x10000u;
+        if (colon) {
+            char *end;
+            unsigned long long a = strtoull(g_s3kstale, &end, 16);
+            if (end == g_s3kstale || end != colon) { fprintf(stderr, "-s3kstale: bad address\n"); return 1; }
+            unsigned long long l = strtoull(colon + 1, &end, 16);
+            if (end == colon + 1 || *end || !l) { fprintf(stderr, "-s3kstale: bad length\n"); return 1; }
+            lo = (uint32_t)a; len = (uint32_t)l;
+        }
+        if (!len || lo + len < lo) { fprintf(stderr, "-s3kstale: invalid range\n"); return 1; }
+        mem_stale_region(&s->mem, lo, len);
+        fprintf(stderr, "S3KSTALE: icode region %08X..%08X, armed\n", lo, lo + len - 1);
+    }
     if (g_stwtrace && !cpu_stwtrace_open(&s->cpu, g_stwtrace)) return 1;
     static hot hist[1 << 16];
     uint64_t win_c0 = 0, win_i0 = 0, win_samples = 0, win_idle = 0;
@@ -595,6 +616,10 @@ int main(int argc, char **argv)
                s->boot_cp, s->boot_copy_bytes, s->boot_copy_first, s->boot_copy_last);
     }
     printf("FLASH: reads=%u writes=%u erases=%u\n", s->fl_reads, s->fl_writes, s->fl_erases);
+    if (s->mem.stale_snap)
+        printf("S3KSTALE: fetches=%llu active=%u range=%08X..%08X\n",
+               (unsigned long long)s->mem.stale_fetches, s->mem.stale_active,
+               s->mem.stale_lo, s->mem.stale_hi - 1);
     printf("SPI0: shifting %.1f ms of %.1f ms; flash program/erase %.1f ms\n", s->spi_busy * 1000.0 / s->cpu_hz,
            cpu_now(&s->cpu) * 1000.0 / s->cpu_hz, s->fl_busy * 1000.0 / s->cpu_hz);
     printf("EDMA: events=%u transfers=%u errors=%u\n", s->edma.events, s->edma.transfers, s->edma.errors);

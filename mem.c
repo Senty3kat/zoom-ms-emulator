@@ -9,6 +9,50 @@ static void bootlog_hook(struct c6x_sys *s, uint32_t addr, int size, uint32_t va
     sys_bootlog_write(s, addr, size, val);
 }
 
+/* Snapshot the region on the first write after -s3kstale. Real memory keeps the
+   new bytes; instruction fetch keeps the old bytes until an L1P/L2 invalidate. */
+static void stale_touch(c6x_mem *m, uint32_t addr, uint32_t len)
+{
+    if (!m->stale_snap || !m->stale_armed) return;
+    if (addr + len <= m->stale_lo || addr >= m->stale_hi) return;
+    uint32_t span = m->stale_hi - m->stale_lo;
+    for (uint32_t i = 0; i < span; i++) {
+        uint8_t *p = mem_ptr(m, m->stale_lo + i);
+        m->stale_snap[i] = p ? *p : 0;
+    }
+    m->stale_armed = 0;
+    m->stale_active = 1;
+}
+
+void mem_stale_region(c6x_mem *m, uint32_t lo, uint32_t len)
+{
+    if (!len) return;
+    free(m->stale_snap);
+    m->stale_lo = lo;
+    m->stale_hi = lo + len;
+    m->stale_snap = calloc(len, 1);
+    m->stale_armed = 1;
+    m->stale_active = 0;
+    m->stale_fetches = 0;
+}
+
+void mem_stale_clear(c6x_mem *m)
+{
+    if (!m->stale_snap) return;
+    m->stale_active = 0;
+    m->stale_armed = 1;   /* a later overwrite can arm it again */
+}
+
+void mem_stale_on_invalidate(c6x_mem *m, uint32_t addr, uint32_t val)
+{
+    if (!m->stale_snap) return;
+    if (addr == 0x01840020u || addr == 0x01845004u || addr == 0x01845008u ||
+        addr == 0x01845028u || addr == 0x0184401Cu || addr == 0x01844024u) {
+        (void)val;
+        mem_stale_clear(m);
+    }
+}
+
 void mem_init(c6x_mem *m)
 {
     memset(m, 0, sizeof *m);
@@ -18,6 +62,7 @@ void mem_init(c6x_mem *m)
 
 void mem_free(c6x_mem *m)
 {
+    free(m->stale_snap);
     for (int i = 0; i < m->nregions; i++) free(m->regions[i].data);
     for (uint32_t i = 0; i < MEM_PAGES; i++) {
         /* metas are shared by aliases: free only the canonical mapping */
@@ -49,6 +94,7 @@ uint8_t *mem_add_ram(c6x_mem *m, const char *name, uint32_t base, uint32_t size,
 int mem_load(c6x_mem *m, uint32_t addr, const void *data, uint32_t len)
 {
     const uint8_t *d = data;
+    stale_touch(m, addr, len);
     for (uint32_t i = 0; i < len; i++) {
         uint8_t *p = mem_ptr(m, addr + i);
         if (!p) return -1;
@@ -63,6 +109,23 @@ int mem_read_block(c6x_mem *m, uint32_t addr, void *out, uint32_t len)
     uint8_t *o = out;
     for (uint32_t i = 0; i < len; i++) {
         uint8_t *p = mem_ptr(m, addr + i);
+        if (!p) return -1;
+        o[i] = *p;
+    }
+    return 0;
+}
+
+int mem_fetch_block(c6x_mem *m, uint32_t addr, void *out, uint32_t len)
+{
+    uint8_t *o = out;
+    for (uint32_t i = 0; i < len; i++) {
+        uint32_t a = addr + i;
+        if (m->stale_active && a >= m->stale_lo && a < m->stale_hi) {
+            o[i] = m->stale_snap[a - m->stale_lo];
+            m->stale_fetches++;
+            continue;
+        }
+        uint8_t *p = mem_ptr(m, a);
         if (!p) return -1;
         o[i] = *p;
     }
@@ -87,6 +150,7 @@ uint32_t mem_rd(c6x_mem *m, uint32_t addr, int size)
 void mem_wr(c6x_mem *m, uint32_t addr, int size, uint32_t val)
 {
     uint8_t *p = mem_ptr(m, addr);
+    if (p) stale_touch(m, addr, (uint32_t)size);
     if (m->sys && m->sys->bootlogf) bootlog_hook(m->sys, addr, size, val);
     if (addr >= m->wwatch_lo && addr < m->wwatch_hi && m->on_wwatch) m->on_wwatch(m->sys, addr, size, val);
     if (p) {

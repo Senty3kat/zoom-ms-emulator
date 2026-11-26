@@ -746,7 +746,10 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
         val = (old & ~mask) | ((val << sh) & mask);
     }
     if (s->logf) fprintf(s->logf, "%10llu pc=%08X W %08X = %08X\n", (unsigned long long)cpu_now(&s->cpu), s->cpu.cr[CR_PCE1], a, val);
-    if (a >= 0x01840000 && a < 0x01849000) cache_cfg_write(&s->cache, a, val);
+    if (a >= 0x01840000 && a < 0x01849000) {
+        cache_cfg_write(&s->cache, a, val);
+        mem_stale_on_invalidate(&s->mem, a, val);
+    }
     if (a >= 0x01800000 && a < 0x01800200) {
         uint32_t off = a - 0x01800000;
         if (off >= 0x20 && off < 0x30) { for (int b = 0; b < 32; b++) if (val & (1u << b)) sys_event(s, (int)((off - 0x20) / 4 * 32 + b)); }
@@ -1016,7 +1019,7 @@ void sys_bootlog_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
 
 void sys_set_jump_cache(c6x_sys *s, int invalidate)
 {
-    if (invalidate) cache_invalidate_all(&s->cache);
+    if (invalidate) { cache_invalidate_all(&s->cache); mem_stale_clear(&s->mem); }
 }
 
 static void hwclose_dint(c6x_cpu *c)
