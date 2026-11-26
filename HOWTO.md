@@ -289,7 +289,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-stack АДР` | задать `B15` сразу после AIS JumpClose; например `C00F7000` для bootmini DU6 | консоль |
 | `-cachejump` | инвалидировать L1D, L2 и L1P сразу после JumpClose, как bootmini DU6 | консоль |
 | `-bootflash` | взять AIS из собранной 4 МБ флеши по `0x40000`, а не из аргумента; ближе к пути BIN/136 | консоль |
-| `-hwclose` | hardware-close старт: останов без записи SPIFMT0/1, отдельный предел LCD SPI 2 МГц, synthetic native IRQ residue без `DINT`, учёт остаточной периферии boot ROM | stderr |
+| `-hwclose` | hardware-close старт: останов без записи SPIFMT0/1, диагностический порог LCD SPI 2 МГц, synthetic native IRQ residue без `DINT`, учёт остаточной периферии boot ROM. Это порог эмулятора, а не измеренный предел железа | stderr |
 | `-romrepaint МС` | период синтетической перерисовки boot-лого при `-hwclose`; диагностический параметр, не hardware-факт | stderr |
 | без `-q` | регистры CPU, 20 самых «горячих» адресов, обращения к периферии | консоль |
 
@@ -686,7 +686,7 @@ overhead, not useful effect work.
 | `-stack ADDR` | set `B15` right after AIS JumpClose, e.g. `C00F7000` for DU6 bootmini | console |
 | `-cachejump` | invalidate L1D, L2 and L1P right after JumpClose, like DU6 bootmini | console |
 | `-bootflash` | parse AIS from the assembled 4 MB flash at `0x40000` instead of the argument file; closer to the BIN/136 path | console |
-| `-hwclose` | hardware-close start: stop without SPIFMT0/1 writes, separate 2 MHz LCD SPI limit, synthetic native IRQ residue without `DINT`, model boot-ROM peripheral residue | stderr |
+| `-hwclose` | hardware-close start: stop without SPIFMT0/1 writes, diagnostic 2 MHz LCD SPI threshold, synthetic native IRQ residue without `DINT`, model boot-ROM peripheral residue. This is an emulator threshold, not a measured hardware limit | stderr |
 | `-romrepaint MS` | synthetic boot-logo repaint period for `-hwclose`; diagnostic parameter, not a hardware fact | stderr |
 | without `-q` | CPU registers, 20 hottest addresses, peripheral accesses | console |
 
