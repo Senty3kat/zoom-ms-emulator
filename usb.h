@@ -45,6 +45,7 @@ typedef struct c6x_usb {
     uint32_t pinmux9;            /* last PINMUX9 write */
     int pinmux9_required;        /* optional: require USB0_DRVVBUS mux bits 7:4 = 1h */
     int power_hsmode;            /* optional: report POWER.HSMODE bit4 as read-only status */
+    int csr0_rxbit_required;     /* optional: require RXPKTRDY bit0 with SERV_RXPKTRDY */
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
     int line;                    /* interrupt line level last reported */

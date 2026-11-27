@@ -299,6 +299,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-readback` | финальные чтения `CFGCHIP2`, `PSC1 MDCTL1/MDSTAT1/PTSTAT`, `DEVCTL` в `usbphy_log.txt` (с `-usbphy`) | stdout |
 | `-usbpinmux` | опционально требовать `PINMUX9[7:4]=1h` (`USB0_DRVVBUS`) для device-attach; по умолчанию выключено | stdout |
 | `-powerhsmode` | опционально читать `POWER.HSMODE` (бит 4) как read-only статус; запись `0x40` читается как `0x50`, attach не меняется | stdout |
+| `-csr0rxbit` | опционально требовать `RXPKTRDY` бит 0 вместе с `SERV_RXPKTRDY` 0x40; A/B для `0x40` против стоковых `0x41/0x49` | stdout |
 | `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются. Рекомендуется для всех bare-metal прогонов | stdout |
 | `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux; быстро ловит firmware, который не вернул LCD mux после flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | опциональные отказы SPI flash: `wp` игнорирует WREN, `wip` не сбрасывает WIP, `rx` не готовит SPIBUF RX, `long` возвращает FF в длинном чтении, `mux` блокирует flash-слово при чужом CS/mux; по умолчанию выключено | stdout |

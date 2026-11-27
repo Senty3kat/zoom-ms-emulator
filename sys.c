@@ -1014,6 +1014,7 @@ c6x_sys *sys_create(void)
     s->usb.pinmux9 = 0;
     s->usb.pinmux9_required = 0;
     s->usb.power_hsmode = 0;
+    s->usb.csr0_rxbit_required = 0;
     s->psc1_transition_until = 0;
     s->usbphy_last_cfgchip2_rd = s->usbphy_last_mdstat1_rd = s->usbphy_last_ptstat_rd = 0;
     s->usbphy_have_cfgchip2_rd = s->usbphy_have_mdstat1_rd = s->usbphy_have_ptstat_rd = 0;

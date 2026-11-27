@@ -149,6 +149,11 @@ static void csr0_write(c6x_sys *s, uint16_t v, uint16_t mask)
     if (w & (1u << 7)) e->txcsr &= (uint16_t)~(1u << 4);                                     /* SERV_SETUPEND */
     if (w & 8) csr0_dataend = 1;
     if (w & (1u << 6)) {                                                                     /* SERV_RXPKTRDY */
+        if (u->csr0_rxbit_required && !(v & 1u)) {
+            ulog(s, "CSR0 SERV_RXPKTRDY without RXPKTRDY bit0 -> STALL");
+            u->ctl_phase = CT_STALL;
+            return;
+        }
         e->txcsr &= (uint16_t)~1u;
         e->rxn = e->rxpos = 0;
         if (u->ctl_phase == CT_SETUP) {
@@ -989,6 +994,8 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->power_hsmode)
         fprintf(f, "USB POWER HSMODE model: on, reported POWER=%02X, attach uses SOFTCONN only\n",
                 (unsigned)(core_rd8(s, 0x01) & 0xFF));
+    if (u->csr0_rxbit_required)
+        fprintf(f, "USB CSR0 servo model: on, RXPKTRDY bit0 required with SERV_RXPKTRDY\n");
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,
