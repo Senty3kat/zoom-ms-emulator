@@ -766,6 +766,7 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
         return;
     }
     if (addr < MMIO_BASE || addr >= MMIO_BASE + MMIO_SIZE) return;
+    if (addr == 0x01C14184u) s->usb.usb0_vbussense = (int)((val >> 16) & 1u);
     /* Safe USB PHY prerequisite decode. None of these checks is fatal: stock
        70CDR 2.10 enumerates on the pedal with CFGCHIP2=0x00025032. */
     if (s->usbphy_logf) {
@@ -972,6 +973,8 @@ c6x_sys *sys_create(void)
     s->adc_value = 0xF0;   /* battery ADC: fresh batteries / adapter */
     s->spi1_timing = 1;    /* model SPI1 word shift time by default */
     s->usb.vbus_level = 3;                /* default: VBusValid on the cable */
+    s->usb.vbus_sense_model = 0;          /* optional fault model, disabled by default */
+    s->usb.usb0_vbussense = 1;            /* until the firmware writes CFGCHIP2 */
     s->flash_size = 4 * 1024 * 1024;
     s->flash = malloc(s->flash_size);
     s->asp.capout = 44100 * 2 * 60;

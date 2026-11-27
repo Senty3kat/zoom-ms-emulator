@@ -16,7 +16,7 @@
      -usb                attach a USB host: enumerates the pedal (usb.txt), MIDI log midi.txt
      -usbwav FILE        capture UAC isochronous IN to WAV (implies -usb)
      -usbphy             log USB PHY prerequisite writes to usbphy_log.txt
-     -usbvbus N|ok|fault  DEVCTL VBUS level 0..3 in bits 4:3 (3=VBusValid)
+     -usbvbus N|ok|fault|sense  DEVCTL VBUS level bits 4:3; sense = honor CFGCHIP2.VBUSSENSE
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
      -midifile FILE      lines "MS HEX..." to send at MS, or "w HEX..." to send after the
@@ -391,11 +391,12 @@ int main(int argc, char **argv)
             const char *m = argv[++i];
             if (!strcmp(m, "ok")) s->usb.vbus_level = 3;
             else if (!strcmp(m, "fault")) s->usb.vbus_level = 1;
+            else if (!strcmp(m, "sense")) s->usb.vbus_sense_model = 1;
             else {
                 char *end = NULL;
                 long lv = strtol(m, &end, 10);
                 if (end == m || *end || lv < 0 || lv > 3) {
-                    fprintf(stderr, "-usbvbus: use 0..3, ok or fault\n");
+                    fprintf(stderr, "-usbvbus: use 0..3, ok, fault or sense\n");
                     return 1;
                 }
                 s->usb.vbus_level = (int)lv;
