@@ -798,7 +798,10 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
         return;
     }
     if (addr < MMIO_BASE || addr >= MMIO_BASE + MMIO_SIZE) return;
-    if (addr == 0x01C14184u) s->usb.usb0_vbussense = (int)((val >> 16) & 1u);
+    if (addr == 0x01C14184u) {
+        s->usb.usb0_vbussense = (int)((val >> 16) & 1u);
+        s->usb.cfgchip2 = val;
+    }
     /* Safe USB PHY prerequisite decode. None of these checks is fatal: stock
        70CDR 2.10 enumerates on the pedal with CFGCHIP2=0x00025032. */
     if (s->usbphy_logf) {

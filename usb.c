@@ -961,6 +961,20 @@ void usb_sync(c6x_sys *s)
         }
         if (usb_effective_vbus(u) < 3) break;      /* VBUS below VBusValid: no D+ pull-up, no enumeration */
         if (u->pinmux9_required && ((u->pinmux9 & 0xF0u) != 0x10u)) break;
+        if (u->usbrefclk_model && ((u->pinmux9 >> 8) & 0xFu) != 0x4u) {
+            if (!u->ep0_prereq_logged) {
+                ulog(s, "USB REFCLKIN model: PINMUX9[11:8] != 4h -> no USB REFCLK, no attach");
+                u->ep0_prereq_logged = 1;
+            }
+            break;
+        }
+        if (u->usbphy_polarity_model && (u->cfgchip2 & ((1u << 6) | (1u << 8))) != ((1u << 6) | (1u << 8))) {
+            if (!u->ep0_prereq_logged) {
+                ulog(s, "USB PHY polarity model: CFGCHIP2 DATPOL/PHY_PLLON missing -> no attach");
+                u->ep0_prereq_logged = 1;
+            }
+            break;
+        }
         /* Stock 70CDR 2.10 attaches with POWER=0x40; hardware is ground truth. */
         if (u->power & 0x40) {
             if (!u->connect_at) { u->connect_at = now + us(s, 100000); ulog(s, "device attached (SOFTCONN)"); }
@@ -1100,6 +1114,12 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->pinmux9_required)
         fprintf(f, "USB PINMUX9 model: on, PINMUX9=%08X, DRVVBUS bits 7:4 %s\n",
                 u->pinmux9, ((u->pinmux9 & 0xF0u) == 0x10u) ? "ok" : "missing");
+    if (u->usbrefclk_model)
+        fprintf(f, "USB REFCLKIN model: on, PINMUX9[11:8]=%Xh %s\n",
+                (u->pinmux9 >> 8) & 0xFu, ((u->pinmux9 >> 8) & 0xFu) == 0x4u ? "ok" : "missing");
+    if (u->usbphy_polarity_model)
+        fprintf(f, "USB PHY polarity model: on, CFGCHIP2=%08X, DATPOL/PLLON %s\n",
+                u->cfgchip2, (u->cfgchip2 & ((1u << 6) | (1u << 8))) == ((1u << 6) | (1u << 8)) ? "ok" : "missing");
     if (u->power_hsmode)
         fprintf(f, "USB POWER HSMODE model: on, reported POWER=%02X, attach uses SOFTCONN only\n",
                 (unsigned)(core_rd8(s, 0x01) & 0xFF));

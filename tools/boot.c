@@ -19,6 +19,8 @@
      -readback           print final CFGCHIP2/PSC1/DEVCTL readbacks (use with -usbphy)
      -usbvbus N|ok|fault|sense  DEVCTL VBUS level bits 4:3; sense = honor CFGCHIP2.VBUSSENSE
      -usbpinmux           optional: require PINMUX9 USB0_DRVVBUS mux bits 7:4 = 1h
+     -usbrefclk           optional: require PINMUX9[11:8] = 4h (USB_REFCLKIN)
+     -usbphypol           optional: require CFGCHIP2 DATPOL=1 and PHY_PLLON=1
      -powerhsmode         optional: report POWER.HSMODE bit4 as read-only status
      -csr0rxbit           optional: require RXPKTRDY bit0 with SERV_RXPKTRDY (A/B with 0x40 vs 0x41)
      -ep0prereq           optional: withhold SETUP until SOFTCONN/INTRUSBE/INTRTXE/INTRRXE/FLUSHFIFO are set
@@ -441,6 +443,12 @@ int main(int argc, char **argv)
         } else if (!strcmp(a, "-usbpinmux")) {
             if (!s->usb.enabled) usb_init(s);
             s->usb.pinmux9_required = 1;
+        } else if (!strcmp(a, "-usbrefclk")) {
+            if (!s->usb.enabled) usb_init(s);
+            s->usb.usbrefclk_model = 1;
+        } else if (!strcmp(a, "-usbphypol")) {
+            if (!s->usb.enabled) usb_init(s);
+            s->usb.usbphy_polarity_model = 1;
         } else if (!strcmp(a, "-usbphy")) {
             if (!s->usbphy_logf) s->usbphy_logf = fopen("usbphy_log.txt", "w");
         } else if (!strcmp(a, "-usbphystrict")) {

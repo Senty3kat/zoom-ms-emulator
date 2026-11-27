@@ -44,6 +44,9 @@ typedef struct c6x_usb {
     int usb0_vbussense;          /* last CFGCHIP2 bit16, 1 until firmware writes it */
     uint32_t pinmux9;            /* last PINMUX9 write */
     int pinmux9_required;        /* optional: require USB0_DRVVBUS mux bits 7:4 = 1h */
+    int usbrefclk_model;         /* optional: require PINMUX9[11:8]=4h (USB_REFCLKIN) */
+    int usbphy_polarity_model;   /* optional: require CFGCHIP2 DATPOL=1 and PHY_PLLON=1 */
+    uint32_t cfgchip2;           /* last CFGCHIP2 write */
     int power_hsmode;            /* optional: report POWER.HSMODE bit4 as read-only status */
     int csr0_rxbit_required;     /* optional: require RXPKTRDY bit0 with SERV_RXPKTRDY */
     int ep0_prereq;              /* optional: gate SETUP delivery on stock EP0 prerequisites */

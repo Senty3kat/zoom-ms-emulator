@@ -298,6 +298,8 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-usbphy` | журнал USB PHY записей и меняющихся чтений `CFGCHIP2`/`PSC1`/`DEVCTL` в `usbphy_log.txt` | stdout |
 | `-readback` | финальные чтения `CFGCHIP2`, `PSC1 MDCTL1/MDSTAT1/PTSTAT`, `DEVCTL` в `usbphy_log.txt` (с `-usbphy`) | stdout |
 | `-usbpinmux` | опционально требовать `PINMUX9[7:4]=1h` (`USB0_DRVVBUS`) для device-attach; по умолчанию выключено | stdout |
+| `-usbrefclk` | опционально требовать `PINMUX9[11:8]=4h` (`USB_REFCLKIN`); по умолчанию выключено | stdout |
+| `-usbphypol` | опционально требовать `CFGCHIP2 DATPOL=1` и `PHY_PLLON=1`; по умолчанию выключено | stdout |
 | `-powerhsmode` | опционально читать `POWER.HSMODE` (бит 4) как read-only статус; запись `0x40` читается как `0x50`, attach не меняется | stdout |
 | `-csr0rxbit` | опционально требовать `RXPKTRDY` бит 0 вместе с `SERV_RXPKTRDY` 0x40; A/B для `0x40` против стоковых `0x41/0x49` | stdout |
 | `-sdramgarbage` | опционально заполнить SDRAM шаблоном `A5A5A5A5` до загрузки AIS; ловит пропущенное обнуление `.bss`/`.common`; по умолчанию память нулевая | stderr |
@@ -722,6 +724,8 @@ overhead, not useful effect work.
 | `-usbphy` | log USB PHY writes and changing readbacks in `usbphy_log.txt` | stdout |
 | `-readback` | final CFGCHIP2, PSC1 and DEVCTL readbacks in `usbphy_log.txt` (requires `-usbphy`) | stdout |
 | `-usbpinmux` | optional: require PINMUX9[7:4]=1h for device attach; disabled by default | stdout |
+| `-usbrefclk` | optional: require PINMUX9 bits 11:8 = 4h (USB_REFCLKIN); disabled by default | stdout |
+| `-usbphypol` | optional: require CFGCHIP2 DATPOL=1 and PHY_PLLON=1; disabled by default | stdout |
 | `-powerhsmode` | optional: report POWER.HSMODE bit4 as a read-only status; does not affect attach | stdout |
 | `-csr0rxbit` | optional: require RXPKTRDY bit0 with SERV_RXPKTRDY; A/B for 0x40 vs stock 0x41/0x49 | stdout |
 | `-sdramgarbage` | optional: fill SDRAM with 0xA5A5A5A5 before the AIS load to catch missing `.bss`/`.common` zero-init; disabled by default | stderr |
