@@ -21,6 +21,7 @@
      -usbpinmux           optional: require PINMUX9 USB0_DRVVBUS mux bits 7:4 = 1h
      -powerhsmode         optional: report POWER.HSMODE bit4 as read-only status
      -csr0rxbit           optional: require RXPKTRDY bit0 with SERV_RXPKTRDY (A/B with 0x40 vs 0x41)
+     -ep0prereq           optional: withhold SETUP until SOFTCONN/INTRUSBE/INTRTXE/INTRRXE/FLUSHFIFO are set
      -sdramgarbage        optional: fill SDRAM with 0xA5A5A5A5 before AIS load (catch missing .bss zero-init)
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
@@ -295,7 +296,7 @@ int main(int argc, char **argv)
     double rom_repaint = 0;
     if (sdram_garbage) {
         sys_sdram_fill_garbage(s, 0xA5A5A5A5u);
-        fprintf(stderr, "SDRAM garbage fill: pattern A5A5A5A5 before AIS load\n");
+        fprintf(stderr, "RAM garbage fill: pattern A5A5A5A5 in L1/L2/SHRAM/SDRAM before AIS load\n");
     }
     if (sys_load_ais(s, argv[1])) { fprintf(stderr, "load failed: %s\n", argv[1]); return 1; }
     /* DSP clock: from the image's PLL setup, -mhz overrides */
@@ -414,6 +415,9 @@ int main(int argc, char **argv)
                 }
                 s->usb.vbus_level = (int)lv;
             }
+        } else if (!strcmp(a, "-ep0prereq")) {
+            if (!s->usb.enabled) usb_init(s);
+            s->usb.ep0_prereq = 1;
         } else if (!strcmp(a, "-sdramgarbage")) {
             /* applied before sys_load_ais(); accepted here as an option */
         } else if (!strcmp(a, "-csr0rxbit")) {

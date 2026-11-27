@@ -46,6 +46,10 @@ typedef struct c6x_usb {
     int pinmux9_required;        /* optional: require USB0_DRVVBUS mux bits 7:4 = 1h */
     int power_hsmode;            /* optional: report POWER.HSMODE bit4 as read-only status */
     int csr0_rxbit_required;     /* optional: require RXPKTRDY bit0 with SERV_RXPKTRDY */
+    int ep0_prereq;              /* optional: gate SETUP delivery on stock EP0 prerequisites */
+    uint8_t ep0_flush_seen;      /* CSR0 FLUSHFIFO written after POWER.SOFTCONN */
+    uint8_t ep0_prereq_missing;  /* bitmask of unmet prerequisites for the report */
+    uint8_t ep0_prereq_logged;
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
     int line;                    /* interrupt line level last reported */

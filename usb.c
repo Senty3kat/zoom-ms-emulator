@@ -139,12 +139,29 @@ static void ep_reset(c6x_usb *u)
 
 static int csr0_dataend;     /* DATAEND written together with the last TXPKTRDY / SERV_RXPKTRDY */
 
+/* Stock 70CDR 2.10 writes INTRTXE=1F, INTRRXE=1E, INTRUSBE=FF and CSR0=100
+   (FLUSHFIFO) before the first SETUP. The optional -ep0prereq model requires
+   the same prerequisites before the host is allowed to deliver SETUP. */
+static uint8_t ep0_prereq_mask(c6x_usb *u)
+{
+    uint8_t m = 0;
+    if (!(u->power & 0x40)) m |= 1;        /* POWER.SOFTCONN */
+    if (!(u->intrusbe)) m |= 2;            /* core INTRUSBE */
+    if (!(u->intrtxe & 0xFFu)) m |= 4;     /* core INTRTXE low byte */
+    if (!(u->intrrxe & 0xFFu)) m |= 8;     /* core INTRRXE low byte */
+    if (!u->ep0_flush_seen) m |= 16;       /* CSR0 FLUSHFIFO */
+    return m;
+}
+
 static void csr0_write(c6x_sys *s, uint16_t v, uint16_t mask)
 {
     c6x_usb *u = &s->usb;
     usb_ep *e = &u->ep[0];
     uint16_t w = v & mask;
-    if (w & (1u << 8)) { e->txn = 0; e->rxn = e->rxpos = 0; e->txcsr &= (uint16_t)~3u; }   /* FLUSHFIFO */
+    if (w & (1u << 8)) {                                                                  /* FLUSHFIFO */
+        e->txn = 0; e->rxn = e->rxpos = 0; e->txcsr &= (uint16_t)~3u;
+        if (u->power & 0x40) u->ep0_flush_seen = 1;
+    }
     if ((mask & 4) && !(v & 4)) e->txcsr &= (uint16_t)~4u;                                   /* SENTSTALL w0c */
     if (w & (1u << 7)) e->txcsr &= (uint16_t)~(1u << 4);                                     /* SERV_SETUPEND */
     if (w & 8) csr0_dataend = 1;
@@ -607,6 +624,18 @@ static void host_enum(c6x_sys *s)
     uint8_t req[8];
     int ok;
 
+    if (u->ep0_prereq) {
+        u->ep0_prereq_missing = ep0_prereq_mask(u);
+        if (u->ep0_prereq_missing) {
+            if (!u->ep0_prereq_logged) {
+                ulog(s, "EP0 SETUP withheld: unmet prerequisites mask %02X (SOFTCONN/INTRUSBE/INTRTXE/INTRRXE/FLUSHFIFO)",
+                     u->ep0_prereq_missing);
+                u->ep0_prereq_logged = 1;
+            }
+            u->next_tick = cpu_now(&s->cpu) + us(s, 1000);
+            return;
+        }
+    }
     if (u->ctl_phase != CT_IDLE) {
         if (!host_ctl_step(s, &ok)) return;
         switch (u->ctl_step) {
@@ -996,6 +1025,8 @@ void usb_report(c6x_sys *s, FILE *f)
                 (unsigned)(core_rd8(s, 0x01) & 0xFF));
     if (u->csr0_rxbit_required)
         fprintf(f, "USB CSR0 servo model: on, RXPKTRDY bit0 required with SERV_RXPKTRDY\n");
+    if (u->ep0_prereq)
+        fprintf(f, "USB EP0 prerequisites: on, SETUP delivery mask %02X (0 = all met)\n", u->ep0_prereq_missing);
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,

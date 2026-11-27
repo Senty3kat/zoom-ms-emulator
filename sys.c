@@ -1015,6 +1015,10 @@ c6x_sys *sys_create(void)
     s->usb.pinmux9_required = 0;
     s->usb.power_hsmode = 0;
     s->usb.csr0_rxbit_required = 0;
+    s->usb.ep0_prereq = 0;
+    s->usb.ep0_flush_seen = 0;
+    s->usb.ep0_prereq_missing = 0;
+    s->usb.ep0_prereq_logged = 0;
     s->psc1_transition_until = 0;
     s->usbphy_last_cfgchip2_rd = s->usbphy_last_mdstat1_rd = s->usbphy_last_ptstat_rd = 0;
     s->usbphy_have_cfgchip2_rd = s->usbphy_have_mdstat1_rd = s->usbphy_have_ptstat_rd = 0;
@@ -1200,11 +1204,16 @@ void sys_hwclose_jump_reset(c6x_sys *s)
    Default stays zero-filled: v1.1 reproduces a ready pedal. */
 void sys_sdram_fill_garbage(c6x_sys *s, uint32_t pattern)
 {
-    uint8_t *p = mem_ptr(&s->mem, 0xC0000000u);
-    const uint32_t len = 8u * 1024u * 1024u;
-    if (!p) return;
-    for (uint32_t i = 0; i < len; i++)
-        p[i] = (uint8_t)(pattern >> ((i & 3u) * 8u));
+    int filled = 0;
+    for (int r = 0; r < s->mem.nregions; r++) {
+        mem_region *region = &s->mem.regions[r];
+        if (!region->data) continue;
+        if (!strcmp(region->name, "DSPROM")) continue;   /* mask ROM is not writable RAM */
+        for (uint32_t i = 0; i < region->size; i++)
+            region->data[i] = (uint8_t)(pattern >> ((i & 3u) * 8u));
+        filled++;
+    }
+    (void)filled;
 }
 
 /* ---------------- clocks and SDRAM ---------------- */

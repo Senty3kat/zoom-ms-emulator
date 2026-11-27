@@ -301,6 +301,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-powerhsmode` | опционально читать `POWER.HSMODE` (бит 4) как read-only статус; запись `0x40` читается как `0x50`, attach не меняется | stdout |
 | `-csr0rxbit` | опционально требовать `RXPKTRDY` бит 0 вместе с `SERV_RXPKTRDY` 0x40; A/B для `0x40` против стоковых `0x41/0x49` | stdout |
 | `-sdramgarbage` | опционально заполнить SDRAM шаблоном `A5A5A5A5` до загрузки AIS; ловит пропущенное обнуление `.bss`/`.common`; по умолчанию память нулевая | stderr |
+| `-ep0prereq` | опционально задерживать SETUP, пока не выполнены `POWER.SOFTCONN`, `INTRUSBE`, `INTRTXE`, `INTRRXE` и `CSR0.FLUSHFIFO`; воспроизводит железный симптом `ep0_setup_count=0` | usb.txt/stdout |
 | `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются. Рекомендуется для всех bare-metal прогонов | stdout |
 | `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux; быстро ловит firmware, который не вернул LCD mux после flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | опциональные отказы SPI flash: `wp` игнорирует WREN, `wip` не сбрасывает WIP, `rx` не готовит SPIBUF RX, `long` возвращает FF в длинном чтении, `mux` блокирует flash-слово при чужом CS/mux; по умолчанию выключено | stdout |
@@ -719,6 +720,7 @@ overhead, not useful effect work.
 | `-powerhsmode` | optional: report POWER.HSMODE bit4 as a read-only status; does not affect attach | stdout |
 | `-csr0rxbit` | optional: require RXPKTRDY bit0 with SERV_RXPKTRDY; A/B for 0x40 vs stock 0x41/0x49 | stdout |
 | `-sdramgarbage` | optional: fill SDRAM with 0xA5A5A5A5 before the AIS load to catch missing `.bss`/`.common` zero-init; disabled by default | stderr |
+| `-ep0prereq` | optional: withhold SETUP until `POWER.SOFTCONN`, `INTRUSBE`, `INTRTXE`, `INTRRXE` and `CSR0.FLUSHFIFO` are present; reproduces the hardware `ep0_setup_count=0` symptom | usb.txt/stdout |
 | `-muxstrict` | honor PINMUX7 CS ownership; recommended for bare-metal runs | stdout |
 | `-muxhalt` | fatal on an LCD write with the wrong mux, catches firmware that does not restore LCD mux after flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | optional SPI flash faults; disabled by default | stdout |
