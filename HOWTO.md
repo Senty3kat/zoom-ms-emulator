@@ -300,6 +300,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-usbpinmux` | опционально требовать `PINMUX9[7:4]=1h` (`USB0_DRVVBUS`) для device-attach; по умолчанию выключено | stdout |
 | `-powerhsmode` | опционально читать `POWER.HSMODE` (бит 4) как read-only статус; запись `0x40` читается как `0x50`, attach не меняется | stdout |
 | `-csr0rxbit` | опционально требовать `RXPKTRDY` бит 0 вместе с `SERV_RXPKTRDY` 0x40; A/B для `0x40` против стоковых `0x41/0x49` | stdout |
+| `-sdramgarbage` | опционально заполнить SDRAM шаблоном `A5A5A5A5` до загрузки AIS; ловит пропущенное обнуление `.bss`/`.common`; по умолчанию память нулевая | stderr |
 | `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются. Рекомендуется для всех bare-metal прогонов | stdout |
 | `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux; быстро ловит firmware, который не вернул LCD mux после flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | опциональные отказы SPI flash: `wp` игнорирует WREN, `wip` не сбрасывает WIP, `rx` не готовит SPIBUF RX, `long` возвращает FF в длинном чтении, `mux` блокирует flash-слово при чужом CS/mux; по умолчанию выключено | stdout |
@@ -711,6 +712,16 @@ overhead, not useful effect work.
 | `-romrepaint MS` | synthetic boot-logo repaint period for `-hwclose`; diagnostic parameter, not a hardware fact | stderr |
 | `-bootlog` | capture bootmini checkpoints from uniform LCD frames and log FWIMG copy writes | `boot_log.txt` |
 | `-otacheck FILE A/B` | compare the A/B flash slot with the FWIMG after the run | stdout |
+| `-usbvbus 0..3\|ok\|fault\|sense` | DEVCTL VBUS level in bits 4:3; `sense` enables the optional CFGCHIP2.VBUSSENSE model; disabled by default | stdout |
+| `-usbphy` | log USB PHY writes and changing readbacks in `usbphy_log.txt` | stdout |
+| `-readback` | final CFGCHIP2, PSC1 and DEVCTL readbacks in `usbphy_log.txt` (requires `-usbphy`) | stdout |
+| `-usbpinmux` | optional: require PINMUX9[7:4]=1h for device attach; disabled by default | stdout |
+| `-powerhsmode` | optional: report POWER.HSMODE bit4 as a read-only status; does not affect attach | stdout |
+| `-csr0rxbit` | optional: require RXPKTRDY bit0 with SERV_RXPKTRDY; A/B for 0x40 vs stock 0x41/0x49 | stdout |
+| `-sdramgarbage` | optional: fill SDRAM with 0xA5A5A5A5 before the AIS load to catch missing `.bss`/`.common` zero-init; disabled by default | stderr |
+| `-muxstrict` | honor PINMUX7 CS ownership; recommended for bare-metal runs | stdout |
+| `-muxhalt` | fatal on an LCD write with the wrong mux, catches firmware that does not restore LCD mux after flash_read | stdout |
+| `-flashfault wp,wip,rx,long,mux` | optional SPI flash faults; disabled by default | stdout |
 | without `-q` | CPU registers, 20 hottest addresses, peripheral accesses | console |
 
 ### New diagnostic options

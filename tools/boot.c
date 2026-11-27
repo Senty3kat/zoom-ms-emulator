@@ -21,6 +21,7 @@
      -usbpinmux           optional: require PINMUX9 USB0_DRVVBUS mux bits 7:4 = 1h
      -powerhsmode         optional: report POWER.HSMODE bit4 as read-only status
      -csr0rxbit           optional: require RXPKTRDY bit0 with SERV_RXPKTRDY (A/B with 0x40 vs 0x41)
+     -sdramgarbage        optional: fill SDRAM with 0xA5A5A5A5 before AIS load (catch missing .bss zero-init)
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
      -midifile FILE      lines "MS HEX..." to send at MS, or "w HEX..." to send after the
@@ -284,11 +285,18 @@ int main(int argc, char **argv)
             return 0;
         }
     }
+    int sdram_garbage = 0;
+    for (int i = 2; i < argc; i++)
+        if (!strcmp(argv[i], "-sdramgarbage")) sdram_garbage = 1;
     c6x_sys *s = sys_create();
     g_sys = s;
     uint32_t jump_stack = 0;
     int jump_cache = 1, boot_flash = 0, hwclose = 1;
     double rom_repaint = 0;
+    if (sdram_garbage) {
+        sys_sdram_fill_garbage(s, 0xA5A5A5A5u);
+        fprintf(stderr, "SDRAM garbage fill: pattern A5A5A5A5 before AIS load\n");
+    }
     if (sys_load_ais(s, argv[1])) { fprintf(stderr, "load failed: %s\n", argv[1]); return 1; }
     /* DSP clock: from the image's PLL setup, -mhz overrides */
     for (int i = 2; i + 1 < argc; i++)
@@ -406,6 +414,8 @@ int main(int argc, char **argv)
                 }
                 s->usb.vbus_level = (int)lv;
             }
+        } else if (!strcmp(a, "-sdramgarbage")) {
+            /* applied before sys_load_ais(); accepted here as an option */
         } else if (!strcmp(a, "-csr0rxbit")) {
             if (!s->usb.enabled) usb_init(s);
             s->usb.csr0_rxbit_required = 1;

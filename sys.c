@@ -1194,6 +1194,19 @@ void sys_hwclose_jump_reset(c6x_sys *s)
     s->cache.hw_residual_cycles = s->hw_residual_cycles;
 }
 
+/* Optional model: real SDRAM is not zero-filled after reset. Fill the 8 MiB
+   SDRAM with a deterministic byte pattern BEFORE the AIS image is loaded, so
+   .bss/.common sections that firmware forgets to clear keep garbage.
+   Default stays zero-filled: v1.1 reproduces a ready pedal. */
+void sys_sdram_fill_garbage(c6x_sys *s, uint32_t pattern)
+{
+    uint8_t *p = mem_ptr(&s->mem, 0xC0000000u);
+    const uint32_t len = 8u * 1024u * 1024u;
+    if (!p) return;
+    for (uint32_t i = 0; i < len; i++)
+        p[i] = (uint8_t)(pattern >> ((i & 3u) * 8u));
+}
+
 /* ---------------- clocks and SDRAM ---------------- */
 /* PLL0 as in the DA830 / OMAP-L137 family (Linux da830 clock tree, da8xx-cfgchip):
    VCO = 24 MHz x (PLLM+1) / (PREDIV+1), allowed 300..600 MHz; PLLOUT = VCO / (POSTDIV+1);

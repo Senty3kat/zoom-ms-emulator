@@ -192,6 +192,7 @@ void sys_clock_rates(c6x_sys *s, double *vco, double *core, double *emif);
 void sys_update_clocks(c6x_sys *s);
 double sys_wall(c6x_sys *s);        /* emulated seconds, across clock changes */
 int sys_sdram_check(c6x_sys *s, FILE *f);   /* prints clocks and timings, returns warnings */
+void sys_sdram_fill_garbage(c6x_sys *s, uint32_t pattern); /* optional: nonzero RAM before AIS load */
 void sys_raise_event(c6x_sys *s, int e);
 uint64_t sys_run(c6x_sys *s, uint64_t cycles);
 void sys_report_mmio(c6x_sys *s, FILE *f);
