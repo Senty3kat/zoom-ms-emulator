@@ -852,6 +852,7 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
         uint32_t sh = 8 * (addr & 3), mask = (size == 1 ? 0xFFu : 0xFFFFu) << sh;
         val = (old & ~mask) | ((val << sh) & mask);
     }
+    if (a == 0x01C14144u) s->usb.pinmux9 = val;
     if (s->logf) fprintf(s->logf, "%10llu pc=%08X W %08X = %08X\n", (unsigned long long)cpu_now(&s->cpu), s->cpu.cr[CR_PCE1], a, val);
     if (a >= 0x01840000 && a < 0x01849000) {
         cache_cfg_write(&s->cache, a, val);
@@ -1010,6 +1011,8 @@ c6x_sys *sys_create(void)
     s->usb.vbus_level = 3;                /* default: VBusValid on the cable */
     s->usb.vbus_sense_model = 0;          /* optional fault model, disabled by default */
     s->usb.usb0_vbussense = 1;            /* until the firmware writes CFGCHIP2 */
+    s->usb.pinmux9 = 0;
+    s->usb.pinmux9_required = 0;
     s->psc1_transition_until = 0;
     s->usbphy_last_cfgchip2_rd = s->usbphy_last_mdstat1_rd = s->usbphy_last_ptstat_rd = 0;
     s->usbphy_have_cfgchip2_rd = s->usbphy_have_mdstat1_rd = s->usbphy_have_ptstat_rd = 0;

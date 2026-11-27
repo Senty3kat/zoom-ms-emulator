@@ -42,6 +42,8 @@ typedef struct c6x_usb {
     int vbus_level;              /* DEVCTL VBUS bits 4:3; 3 = VBusValid */
     int vbus_sense_model;        /* optional: CFGCHIP2.VBUSSENSE controls effective VBUS */
     int usb0_vbussense;          /* last CFGCHIP2 bit16, 1 until firmware writes it */
+    uint32_t pinmux9;            /* last PINMUX9 write */
+    int pinmux9_required;        /* optional: require USB0_DRVVBUS mux bits 7:4 = 1h */
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
     int line;                    /* interrupt line level last reported */

@@ -846,6 +846,7 @@ void usb_sync(c6x_sys *s)
     switch (u->state) {
     case H_WAIT_CONNECT:
         if (usb_effective_vbus(u) < 3) break;      /* VBUS below VBusValid: no D+ pull-up, no enumeration */
+        if (u->pinmux9_required && ((u->pinmux9 & 0xF0u) != 0x10u)) break;
         /* Stock 70CDR 2.10 attaches with POWER=0x40; hardware is ground truth. */
         if (u->power & 0x40) {
             if (!u->connect_at) { u->connect_at = now + us(s, 100000); ulog(s, "device attached (SOFTCONN)"); }
@@ -982,6 +983,9 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->vbus_sense_model)
         fprintf(f, "USB VBUS sense model: on, CFGCHIP2.VBUSSENSE=%d, effective level %d\n",
                 u->usb0_vbussense, level);
+    if (u->pinmux9_required)
+        fprintf(f, "USB PINMUX9 model: on, PINMUX9=%08X, DRVVBUS bits 7:4 %s\n",
+                u->pinmux9, ((u->pinmux9 & 0xF0u) == 0x10u) ? "ok" : "missing");
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,

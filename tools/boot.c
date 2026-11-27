@@ -18,6 +18,7 @@
      -usbphy             log USB PHY writes and CFGCHIP2/PSC1 readbacks to usbphy_log.txt
      -readback           print final CFGCHIP2/PSC1/DEVCTL readbacks (use with -usbphy)
      -usbvbus N|ok|fault|sense  DEVCTL VBUS level bits 4:3; sense = honor CFGCHIP2.VBUSSENSE
+     -usbpinmux           optional: require PINMUX9 USB0_DRVVBUS mux bits 7:4 = 1h
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
      -midifile FILE      lines "MS HEX..." to send at MS, or "w HEX..." to send after the
@@ -403,6 +404,9 @@ int main(int argc, char **argv)
                 }
                 s->usb.vbus_level = (int)lv;
             }
+        } else if (!strcmp(a, "-usbpinmux")) {
+            if (!s->usb.enabled) usb_init(s);
+            s->usb.pinmux9_required = 1;
         } else if (!strcmp(a, "-usbphy")) {
             if (!s->usbphy_logf) s->usbphy_logf = fopen("usbphy_log.txt", "w");
         } else if (!strcmp(a, "-usbphystrict")) {
