@@ -234,7 +234,7 @@ static uint8_t core_rd8(c6x_sys *s, uint32_t c)
     uint8_t v;
     switch (c) {
     case 0x00: return u->faddr;
-    case 0x01: return u->power;
+    case 0x01: return (uint8_t)(u->power | (u->power_hsmode ? 0x10u : 0u));
     case 0x02: v = (uint8_t)u->intrtx; u->intrtx &= 0xFF00; return v;
     case 0x03: v = (uint8_t)(u->intrtx >> 8); u->intrtx &= 0x00FF; return v;
     case 0x04: v = (uint8_t)u->intrrx; u->intrrx &= 0xFF00; return v;
@@ -281,7 +281,7 @@ static void core_wr(c6x_sys *s, uint32_t c, int size, uint32_t v)
                on the pedal. Use that as the model ground truth: 0x40 attaches. */
             if ((b ^ u->power) & 0x40) ulog(s, "POWER.SOFTCONN %s", (b & 0x40) ? "on" : "off");
             if ((b ^ u->power) & 0x80) ulog(s, "POWER.ISOUPDATE %s", (b & 0x80) ? "on" : "off");
-            u->power = b;
+            u->power = (uint8_t)(b & ~0x10u);  /* bit4 HSMODE is status, not written */
             break;
         case 0x06: u->intrtxe = (uint16_t)((u->intrtxe & 0xFF00) | b); break;
         case 0x07: u->intrtxe = (uint16_t)((u->intrtxe & 0x00FF) | (b << 8)); break;
@@ -986,6 +986,9 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->pinmux9_required)
         fprintf(f, "USB PINMUX9 model: on, PINMUX9=%08X, DRVVBUS bits 7:4 %s\n",
                 u->pinmux9, ((u->pinmux9 & 0xF0u) == 0x10u) ? "ok" : "missing");
+    if (u->power_hsmode)
+        fprintf(f, "USB POWER HSMODE model: on, reported POWER=%02X, attach uses SOFTCONN only\n",
+                (unsigned)(core_rd8(s, 0x01) & 0xFF));
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,

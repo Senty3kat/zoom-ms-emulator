@@ -44,6 +44,7 @@ typedef struct c6x_usb {
     int usb0_vbussense;          /* last CFGCHIP2 bit16, 1 until firmware writes it */
     uint32_t pinmux9;            /* last PINMUX9 write */
     int pinmux9_required;        /* optional: require USB0_DRVVBUS mux bits 7:4 = 1h */
+    int power_hsmode;            /* optional: report POWER.HSMODE bit4 as read-only status */
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
     int line;                    /* interrupt line level last reported */
