@@ -15,6 +15,8 @@
      -t CYC [-tl N]      instruction trace from cycle CYC (trace.txt)
      -usb                attach a USB host: enumerates the pedal (usb.txt), MIDI log midi.txt
      -usbwav FILE        capture UAC isochronous IN to WAV (implies -usb)
+     -usbphy             log USB PHY prerequisite writes to usbphy_log.txt
+     -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
      -midifile FILE      lines "MS HEX..." to send at MS, or "w HEX..." to send after the
                          pedal answered the previous message (# comments)
@@ -263,7 +265,7 @@ int main(int argc, char **argv)
             if (legacy_name) break;
         }
         if (legacy_name) {
-            else if (!strncmp(legacy_name, "-usb", 4) || !strncmp(legacy_name, "-midi", 5))
+            if (!strncmp(legacy_name, "-usb", 4) || !strncmp(legacy_name, "-midi", 5))
                 replacement = "logs are written always; use -q for a short report";
             else if (!strncmp(legacy_name, "-cache", 6)) replacement = "-cachelog with an optional T1:T2 window";
             else replacement = "-hwclose / -no-hwclose";
@@ -384,6 +386,11 @@ int main(int argc, char **argv)
         } else if (!strcmp(a, "-usbwav") && i + 1 < argc) {
             if (!s->usb.enabled) usb_init(s);
             if (usb_iso_wav_open(s, argv[++i])) { fprintf(stderr, "cannot open %s for UAC WAV\n", argv[i]); return 1; }
+        } else if (!strcmp(a, "-usbphy")) {
+            if (!s->usbphy_logf) s->usbphy_logf = fopen("usbphy_log.txt", "w");
+        } else if (!strcmp(a, "-usbphystrict")) {
+            s->usbphy_strict = 1;
+            if (!s->usbphy_logf) s->usbphy_logf = fopen("usbphy_log.txt", "w");
         } else if (!strcmp(a, "-sysex") && i + 1 < argc) {
             double t; char *colon = strchr(argv[++i], ':');
             if (!s->usb.enabled) usb_init(s);
@@ -549,7 +556,7 @@ int main(int argc, char **argv)
              const char *replacement = NULL;
              for (int k = 0; legacy[k]; k++)
                  if (!strcmp(a, legacy[k])) {
-                     else if (!strncmp(a, "-usb", 4) || !strncmp(a, "-midi", 5)) replacement = "logs are written always; use -q for a short report";
+                    if (!strncmp(a, "-usb", 4) || !strncmp(a, "-midi", 5)) replacement = "logs are written always; use -q for a short report";
                      else if (!strncmp(a, "-cache", 6)) replacement = "-cachelog with an optional T1:T2 window";
                      else replacement = "-hwclose / -no-hwclose";
                      break;
@@ -790,6 +797,7 @@ int main(int argc, char **argv)
     if (s->dmalf) fclose(s->dmalf);
     if (s->spilf) fclose(s->spilf);
     if (s->flashlogf) fclose(s->flashlogf);
+    if (s->usbphy_logf) fclose(s->usbphy_logf);
     if (s->cpu.stwtracef) {
         printf("STWTRACE writes=%llu range=%08X..%08X\n", (unsigned long long)s->cpu.stw_writes,
                s->cpu.stw_base, s->cpu.stw_end - 1);

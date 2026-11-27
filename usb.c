@@ -272,7 +272,7 @@ static void core_wr(c6x_sys *s, uint32_t c, int size, uint32_t v)
             /* Stock 70CDR 2.10 writes POWER=0x40 at PC C00A2E60 and enumerates
                on the pedal. Use that as the model ground truth: 0x40 attaches. */
             if ((b ^ u->power) & 0x40) ulog(s, "POWER.SOFTCONN %s", (b & 0x40) ? "on" : "off");
-            if ((b ^ u->power) & 0x80) ulog(s, "POWER.OTHER7 %s", (b & 0x80) ? "on" : "off");
+            if ((b ^ u->power) & 0x80) ulog(s, "POWER.ISOUPDATE %s", (b & 0x80) ? "on" : "off");
             u->power = b;
             break;
         case 0x06: u->intrtxe = (uint16_t)((u->intrtxe & 0xFF00) | b); break;

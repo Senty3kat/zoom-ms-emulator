@@ -36,6 +36,11 @@ typedef struct c6x_sys {
     FILE *gpiolf;             /* -gpiolog: all GPIO pin changes with time and PC */
     FILE *dmalf;              /* -dma: EDMA transfers */
     FILE *spilf;              /* -spi: SPI0 words with clock/CS */
+    FILE *usbphy_logf;        /* -usbphy: USB PHY prerequisite writes */
+    int usbphy_strict;        /* -usbphystrict: optional TI Example 31-1 checks */
+    int usbphy_kick0, usbphy_kick1;  /* unlock sequence seen */
+    int usbphy_psc_on;        /* PSC1 MDCTL[1] NEXT=ON seen */
+    int usbphy_cfgchip2;      /* CFGCHIP2 write seen */
     double spi_lcd_max, spi_flash_max;  /* -spilimit, MHz; 0 = no check */
     int spi_limit_warned;
     int hwclose;                 /* -hwclose: hardware-close start model */

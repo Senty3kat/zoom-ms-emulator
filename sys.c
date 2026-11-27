@@ -766,6 +766,45 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
         return;
     }
     if (addr < MMIO_BASE || addr >= MMIO_BASE + MMIO_SIZE) return;
+    /* Safe USB PHY prerequisite decode. None of these checks is fatal: stock
+       70CDR 2.10 enumerates on the pedal with CFGCHIP2=0x00025032. */
+    if (s->usbphy_logf) {
+        const char *tag = NULL;
+        if (addr == 0x01C14038u) {
+            tag = "KICK0R";
+            if (val == 0x83E70B13u) s->usbphy_kick0 = 1;
+        } else if (addr == 0x01C1403Cu) {
+            tag = "KICK1R";
+            if (val == 0x95A4F1E0u) s->usbphy_kick1 = 1;
+        } else if (addr == 0x01C14144u) tag = "PINMUX9";
+        else if (addr == 0x01C14184u) {
+            tag = "CFGCHIP2";
+            s->usbphy_cfgchip2 = 1;
+        } else if (addr == 0x01E27A04u) {
+            tag = "PSC1_MDCTL1";
+            if ((val & 3u) == 3u) s->usbphy_psc_on = 1;
+        } else if (addr == 0x01E27120u) tag = "PSC1_PTCMD";
+        else if (addr == 0x01E27128u) tag = "PSC1_PTSTAT";
+        else if (addr == 0x01E27804u) tag = "PSC1_PDSTAT";
+        else if (addr == 0x01E00460u) tag = "USB_DEVCTL";
+        if (tag)
+            fprintf(s->usbphy_logf, "%10llu pc=%08X %s %08X = %08X\n",
+                    (unsigned long long)cpu_now(&s->cpu), s->cpu.cr[CR_PCE1], tag, addr, val);
+        if (s->usbphy_strict) {
+            if (addr == 0x01C14144u && (!s->usbphy_kick0 || !s->usbphy_kick1))
+                fprintf(s->usbphy_logf, "%10llu WARN PINMUX9 before KICK0R/KICK1R\n",
+                        (unsigned long long)cpu_now(&s->cpu));
+            if (addr == 0x01C14184u && (!s->usbphy_kick0 || !s->usbphy_kick1))
+                fprintf(s->usbphy_logf, "%10llu WARN CFGCHIP2 before KICK0R/KICK1R\n",
+                        (unsigned long long)cpu_now(&s->cpu));
+            if (addr == 0x01E27A04u && (!s->usbphy_kick0 || !s->usbphy_kick1))
+                fprintf(s->usbphy_logf, "%10llu WARN PSC1_MDCTL1 before KICK0R/KICK1R\n",
+                        (unsigned long long)cpu_now(&s->cpu));
+            if (addr == 0x01E27120u && !s->usbphy_psc_on)
+                fprintf(s->usbphy_logf, "%10llu WARN PSC1_PTCMD before MDCTL1 NEXT=ON\n",
+                        (unsigned long long)cpu_now(&s->cpu));
+        }
+    }
     if (addr >= 0x01E00000 && addr < 0x01E10000 && s->usb.enabled) {
         if (addr == 0x01E00401u && !(val & 0x40u)) { s->hw_usb_seen = 1; if (s->cpu.cache) s->cpu.cache->hw_usb_seen = 1; }
         if (s->logf) fprintf(s->logf, "%10llu pc=%08X W%d %08X = %08X\n", (unsigned long long)cpu_now(&s->cpu), s->cpu.cr[CR_PCE1], size, addr, val);
