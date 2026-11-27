@@ -305,7 +305,25 @@ static void core_wr(c6x_sys *s, uint32_t c, int size, uint32_t v)
         case 0x01:
             /* Stock 70CDR 2.10 writes POWER=0x40 at PC C00A2E60 and enumerates
                on the pedal. Use that as the model ground truth: 0x40 attaches. */
-            if ((b ^ u->power) & 0x40) ulog(s, "POWER.SOFTCONN %s", (b & 0x40) ? "on" : "off");
+            if ((b ^ u->power) & 0x40) {
+                ulog(s, "POWER.SOFTCONN %s", (b & 0x40) ? "on" : "off");
+                if (!(b & 0x40)) {
+                    u->softconn_off_at = cpu_now(&s->cpu);
+                } else if (u->softconn_off_at) {
+                    uint64_t gap = cpu_now(&s->cpu) - u->softconn_off_at;
+                    u->softconn_gap_cycles = gap;
+                    u->softconn_off_at = 0;
+                    u->reattach_gaps_seen++;
+                    if (gap > us(s, 2000)) {   /* stock is ~0.186 ms; 2 ms is a safe A/B threshold */
+                        u->reattach_gaps_bad++;
+                        u->reattach_rejected = 1;
+                        ulog(s, "SOFTCONN off->on gap %.3f ms too long: host treats as device removal",
+                             (double)gap * 1000.0 / (double)s->cpu_hz);
+                    } else {
+                        u->reattach_rejected = 0;
+                    }
+                }
+            }
             if ((b ^ u->power) & 0x80) ulog(s, "POWER.ISOUPDATE %s", (b & 0x80) ? "on" : "off");
             u->power = (uint8_t)(b & ~0x10u);  /* bit4 HSMODE is status, not written */
             break;
@@ -919,6 +937,13 @@ void usb_sync(c6x_sys *s)
     u->next_tick = now + us(s, 50);
     switch (u->state) {
     case H_WAIT_CONNECT:
+        if (u->reattach_gap_model && u->reattach_rejected) {
+            if (!u->ep0_prereq_logged) {
+                ulog(s, "enumeration blocked: SOFTCONN off->on gap too long (device removal)");
+                u->ep0_prereq_logged = 1;
+            }
+            break;
+        }
         if (usb_effective_vbus(u) < 3) break;      /* VBUS below VBusValid: no D+ pull-up, no enumeration */
         if (u->pinmux9_required && ((u->pinmux9 & 0xF0u) != 0x10u)) break;
         /* Stock 70CDR 2.10 attaches with POWER=0x40; hardware is ground truth. */
@@ -1070,6 +1095,10 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->ep0_lanes_model)
         fprintf(f, "USB EP0 FIFO lanes: on, lane_bad=%d\n", u->ep0_lane_bad);
     fprintf(f, "USB CTRLR resets: %u (bit0 reads back 0 after each reset write)\n", u->ctrlr_resets);
+    if (u->reattach_gap_model)
+        fprintf(f, "USB reattach gaps: %u seen, %u too long, last %.3f ms (limit 2.000 ms)\n",
+                u->reattach_gaps_seen, u->reattach_gaps_bad,
+                (double)u->softconn_gap_cycles * 1000.0 / (double)s->cpu_hz);
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,

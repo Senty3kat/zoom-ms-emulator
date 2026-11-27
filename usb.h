@@ -57,6 +57,12 @@ typedef struct c6x_usb {
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
     uint32_t ctrlr_resets;       /* CTRLR bit0 software reset observed */
+    int reattach_gap_model;      /* optional: enforce a short SOFTCONN off->on gap */
+    uint64_t softconn_off_at;    /* cycle when POWER.SOFTCONN went 1 -> 0 */
+    uint64_t softconn_gap_cycles;/* last off->on gap */
+    uint32_t reattach_gaps_seen; /* number of off->on transitions observed */
+    uint32_t reattach_gaps_bad;  /* off->on gaps longer than the allowed window */
+    int reattach_rejected;       /* current too-long reattach blocks enumeration */
     int line;                    /* interrupt line level last reported */
     /* MUSB core */
     uint8_t faddr, power, index, testmode, devctl, intrusbe;

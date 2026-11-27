@@ -303,6 +303,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-sdramgarbage` | опционально заполнить SDRAM шаблоном `A5A5A5A5` до загрузки AIS; ловит пропущенное обнуление `.bss`/`.common`; по умолчанию память нулевая | stderr |
 | `-ep0prereq` | опционально задерживать SETUP, пока не выполнены `POWER.SOFTCONN`, `INTRUSBE`, `INTRTXE`, `INTRRXE` и `CSR0.FLUSHFIFO`; воспроизводит железный симптом `ep0_setup_count=0` | usb.txt/stdout |
 | `-ep0fifolanes` | опционально требовать байтовые lanes FIFO0 `0x20/21/22/23` с начала каждого IN-пакета; старая запись всех байтов в `0x20` даёт STALL | usb.txt/stdout |
+| `-reattachgap` | опционально блокировать перечисление, если пауза `POWER.SOFTCONN off→on` больше 2 мс; железо при 1400 мс удаляет устройство, сток держит 0.186 мс | usb.txt/stdout |
 | `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются. Рекомендуется для всех bare-metal прогонов | stdout |
 | `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux; быстро ловит firmware, который не вернул LCD mux после flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | опциональные отказы SPI flash: `wp` игнорирует WREN, `wip` не сбрасывает WIP, `rx` не готовит SPIBUF RX, `long` возвращает FF в длинном чтении, `mux` блокирует flash-слово при чужом CS/mux; по умолчанию выключено | stdout |
@@ -414,6 +415,7 @@ CFW может читать их оттуда, не трогая SPI1.
 | Путь `../../build/...` не находится | Примеры HOWTO рассчитаны на папку `run/try`. Из другой папки путь к `build/c6xboot.exe` другой — поправьте его. |
 | В PowerShell строки `DSP clock`, `CLOCKS`, `CACHE` красные | Это вывод в stderr, а не ошибка. Главный признак успеха — `halted=0` в итоговой сводке. |
 | На железе Windows видит дескрипторы, но наш обработчик EP0 не видит SETUP | Возможно, перечисление уже выполнил родной bootloader до JumpClose. Прошивка должна сделать свежий attach: `POWER.SOFTCONN 0` → задержка → `FADDR=0` → `POWER.SOFTCONN 0x40`. Проверьте `usb.txt`: после повторного attach должны появиться `SETUP` и `configured`. |
+| Повторный attach `POWER 0 → 0x40` заставляет устройство исчезнуть из USBPcap | Пауза между off и on слишком длинная. Сток держит подтяжку выключенной около **0.186 мс** (55 710 циклов при 300 МГц). Пауза 1400 мс воспринимается Windows как удаление устройства. Держите паузу ≈0.2 мс, затем `FADDR=0` и `POWER=0x40`. Для проверки достаточно физически отключить и подключить кабель после загрузки. |
 
 Стоковая прошивка между событиями действительно проводит время в idle-путах — это нормально. Нажатие кнопки **после play-экрана** меняет экран; если этого не происходит, сначала проверьте тайминг, а не делайте вывод, что UI не работает.
 
@@ -724,6 +726,7 @@ overhead, not useful effect work.
 | `-sdramgarbage` | optional: fill SDRAM with 0xA5A5A5A5 before the AIS load to catch missing `.bss`/`.common` zero-init; disabled by default | stderr |
 | `-ep0prereq` | optional: withhold SETUP until `POWER.SOFTCONN`, `INTRUSBE`, `INTRTXE`, `INTRRXE` and `CSR0.FLUSHFIFO` are present; reproduces the hardware `ep0_setup_count=0` symptom | usb.txt/stdout |
 | `-ep0fifolanes` | optional: require EP0 FIFO byte lanes 0x20/21/22/23 from the start of every IN packet; old all-bytes-to-0x20 writes cause STALL | usb.txt/stdout |
+| `-reattachgap` | optional: block enumeration when the POWER.SOFTCONN off-to-on gap exceeds 2 ms; hardware removes the device at 1400 ms while stock uses 0.186 ms | usb.txt/stdout |
 | `-muxstrict` | honor PINMUX7 CS ownership; recommended for bare-metal runs | stdout |
 | `-muxhalt` | fatal on an LCD write with the wrong mux, catches firmware that does not restore LCD mux after flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | optional SPI flash faults; disabled by default | stdout |
@@ -832,5 +835,6 @@ can read them there without touching SPI1.
 | `../../build/...` path not found | HOWTO examples assume the `run/try` folder. From another folder the path to `build/c6xboot.exe` differs — adjust it. |
 | `DSP clock`, `CLOCKS`, `CACHE` lines are red in PowerShell | This is stderr output, not an error. The main success sign is `halted=0` in the final summary. |
 | Windows sees the descriptors on hardware but our EP0 handler sees no SETUP | The native bootloader may have enumerated the device before JumpClose. Firmware must do a fresh attach: `POWER.SOFTCONN 0` → delay → `FADDR=0` → `POWER.SOFTCONN 0x40`. In `usb.txt`, `SETUP` and `configured` should appear only after that reattach. |
+| A `POWER 0 → 0x40` reattach makes the device disappear from USBPcap | The off-to-on gap is far too long. Stock keeps the pull-up down for only **0.186 ms** (55,710 cycles at 300 MHz). A 1400 ms gap looks like device removal to Windows. Keep the gap near 0.2 ms, then `FADDR=0` and `POWER=0x40`. A physical cable replug after boot is a clean check. |
 
 A stock firmware does spend time in idle paths between events — that is normal. A button press **after the Play screen** changes the screen; if it does not, check the timing before concluding that the UI is broken.
