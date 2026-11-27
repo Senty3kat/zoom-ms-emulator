@@ -310,7 +310,7 @@ GPIO, SPI0 LCD+флеш, SPI1 АЦП, EDMA3, McASP0, кэш); `zdl.c` — заг
 - Ранние проекты сообщества — прототип контекста для вызова аудиофункции
   и первый линкер ZDL: формат дескрипторов и эмпирические константы.
 - `zoom-fx-modding-ref` (CH_2.md) — разбор DSP-циклов LineSel.
-- `ZoomPedalFun-main` (checkme.py) — независимый реверс layout точки входа SonicStomp.
+- `ZoomPedalFun-main` (checkme.py; архивная ссылка — файл удалён из текущего HEAD `shooking/ZoomPedalFun`) — независимый реверс layout точки входа SonicStomp.
 - Zig — компилятор C для сборки (`zig cc`)
 
 ### Связанные проекты (для справки, не зависимости)
@@ -667,7 +667,7 @@ sources of knowledge and related work.
 - Early community projects — a prototype context for calling the audio
   function and the first ZDL linker: descriptor format and empirical constants.
 - `zoom-fx-modding-ref` (CH_2.md) — disassembly of LineSel DSP loops.
-- `ZoomPedalFun-main` (checkme.py) — independent reverse engineering of the
+- `ZoomPedalFun-main` (checkme.py; archived reference — the file was removed from the current `shooking/ZoomPedalFun` HEAD) — independent reverse engineering of the
   SonicStomp entry layout.
 - Zig — the C compiler used for the build (`zig cc`)
 
