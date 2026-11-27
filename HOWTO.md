@@ -413,6 +413,7 @@ CFW может читать их оттуда, не трогая SPI1.
 | Не могу найти логи | Все лог-файлы создаются в текущей рабочей директории, откуда запущен `c6xboot.exe`. Для проверки экрана есть ключ `-lcdlog` → `lcdlog.txt`. |
 | Путь `../../build/...` не находится | Примеры HOWTO рассчитаны на папку `run/try`. Из другой папки путь к `build/c6xboot.exe` другой — поправьте его. |
 | В PowerShell строки `DSP clock`, `CLOCKS`, `CACHE` красные | Это вывод в stderr, а не ошибка. Главный признак успеха — `halted=0` в итоговой сводке. |
+| На железе Windows видит дескрипторы, но наш обработчик EP0 не видит SETUP | Возможно, перечисление уже выполнил родной bootloader до JumpClose. Прошивка должна сделать свежий attach: `POWER.SOFTCONN 0` → задержка → `FADDR=0` → `POWER.SOFTCONN 0x40`. Проверьте `usb.txt`: после повторного attach должны появиться `SETUP` и `configured`. |
 
 Стоковая прошивка между событиями действительно проводит время в idle-путах — это нормально. Нажатие кнопки **после play-экрана** меняет экран; если этого не происходит, сначала проверьте тайминг, а не делайте вывод, что UI не работает.
 
@@ -830,5 +831,6 @@ can read them there without touching SPI1.
 | Cannot find the logs | All log files are written to the current working directory where `c6xboot.exe` was started. Use `-lcdlog` to write `lcdlog.txt` for display checks. |
 | `../../build/...` path not found | HOWTO examples assume the `run/try` folder. From another folder the path to `build/c6xboot.exe` differs — adjust it. |
 | `DSP clock`, `CLOCKS`, `CACHE` lines are red in PowerShell | This is stderr output, not an error. The main success sign is `halted=0` in the final summary. |
+| Windows sees the descriptors on hardware but our EP0 handler sees no SETUP | The native bootloader may have enumerated the device before JumpClose. Firmware must do a fresh attach: `POWER.SOFTCONN 0` → delay → `FADDR=0` → `POWER.SOFTCONN 0x40`. In `usb.txt`, `SETUP` and `configured` should appear only after that reattach. |
 
 A stock firmware does spend time in idle paths between events — that is normal. A button press **after the Play screen** changes the screen; if it does not, check the timing before concluding that the UI is broken.
