@@ -685,3 +685,13 @@ sources of knowledge and related work.
 GPL v3. Parts of the code (`decode.c`, `opcode/`) are a port of binutils
 (GPL v3, Free Software Foundation), so the whole project is distributed under
 GPL v3. See [LICENSE](LICENSE).
+
+## Экосистема / Related projects
+
+Другие проекты по Zoom MS:
+- [dialup5-cfw](https://github.com/Senty3kat/dialup5-cfw) — кастомная прошивка DialUp 5.90 для MS-50G, MS-60B и MS-70CDR
+- [zdl-pseudo](https://github.com/Senty3kat/zdl-pseudo) — декодер ZDL в псевдокод для анализа эффектов
+- [Vocowder-ZDL-MS70CDR](https://github.com/Senty3kat/Vocowder-ZDL-MS70CDR) — вокодер для MS-70CDR в формате ZDL
+- [zoom-ms-doom-cfw](https://github.com/Senty3kat/zoom-ms-doom-cfw) — Doom на педали Zoom MultiStomp
+- [sForm-ZDL-MS70CDR](https://github.com/Senty3kat/sForm-ZDL-MS70CDR) — LFO, дрон и синтезатор для MS-70CDR
+- [XDuck-ZDL-MS70CDR](https://github.com/Senty3kat/XDuck-ZDL-MS70CDR) — дак-эффект и гейт для MS-70CDR
