@@ -39,7 +39,7 @@ typedef struct {
 
 typedef struct c6x_usb {
     int enabled;                 /* -usb: a host is attached */
-    int vbus_fault;              /* -usbvbus fault: no VBUS/SESSION on the cable */
+    int vbus_level;              /* DEVCTL VBUS bits 3:2; 3 = VBusValid */
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
     int line;                    /* interrupt line level last reported */

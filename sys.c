@@ -971,6 +971,7 @@ c6x_sys *sys_create(void)
     s->lcd_cs_pin = 91;
     s->adc_value = 0xF0;   /* battery ADC: fresh batteries / adapter */
     s->spi1_timing = 1;    /* model SPI1 word shift time by default */
+    s->usb.vbus_level = 3;                /* default: VBusValid on the cable */
     s->flash_size = 4 * 1024 * 1024;
     s->flash = malloc(s->flash_size);
     s->asp.capout = 44100 * 2 * 60;

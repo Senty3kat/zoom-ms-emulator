@@ -16,7 +16,7 @@
      -usb                attach a USB host: enumerates the pedal (usb.txt), MIDI log midi.txt
      -usbwav FILE        capture UAC isochronous IN to WAV (implies -usb)
      -usbphy             log USB PHY prerequisite writes to usbphy_log.txt
-     -usbvbus fault      model missing VBUS/SESSION on the cable (no enumeration)
+     -usbvbus N|ok|fault  DEVCTL VBUS level 0..3 (3=VBusValid, ok=3, fault=1)
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
      -midifile FILE      lines "MS HEX..." to send at MS, or "w HEX..." to send after the
@@ -389,9 +389,17 @@ int main(int argc, char **argv)
             if (usb_iso_wav_open(s, argv[++i])) { fprintf(stderr, "cannot open %s for UAC WAV\n", argv[i]); return 1; }
         } else if (!strcmp(a, "-usbvbus") && i + 1 < argc) {
             const char *m = argv[++i];
-            if (!strcmp(m, "fault")) s->usb.vbus_fault = 1;
-            else if (!strcmp(m, "ok")) s->usb.vbus_fault = 0;
-            else { fprintf(stderr, "-usbvbus: use ok or fault\n"); return 1; }
+            if (!strcmp(m, "ok")) s->usb.vbus_level = 3;
+            else if (!strcmp(m, "fault")) s->usb.vbus_level = 1;
+            else {
+                char *end = NULL;
+                long lv = strtol(m, &end, 10);
+                if (end == m || *end || lv < 0 || lv > 3) {
+                    fprintf(stderr, "-usbvbus: use 0..3, ok or fault\n");
+                    return 1;
+                }
+                s->usb.vbus_level = (int)lv;
+            }
         } else if (!strcmp(a, "-usbphy")) {
             if (!s->usbphy_logf) s->usbphy_logf = fopen("usbphy_log.txt", "w");
         } else if (!strcmp(a, "-usbphystrict")) {
