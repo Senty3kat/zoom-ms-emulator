@@ -80,6 +80,7 @@ build/c6xboot.exe path/to/firmware/129_main_OS.bin -s 3 -q -flashfast \
 | `-flashlog` | `flash_log.txt` | реальные записи/стирания SPI flash: такт, `fl_addr`, `fl_cmd`, `fl_writes`, адрес/байт записи или диапазон стирания |
 | `-stwtrace ФАЙЛ[,АДР:ДЛИНА]` | указанный файл | трасса `STW` в буфере вывода: такт, PC, `left i` / `right i`, адрес, исходный регистр, значение и float; по умолчанию окно `11F04100:40` |
 | `-staleicode [АДР:ДЛИНА]` | stdout | после первой записи в регион исполняемого кода выборка команд возвращает старые байты до инвалидации L1P/L2; включено по умолчанию, `-no-staleicode` отключает |
+| (диапазоны stale) | stdout | по умолчанию несколько независимых регионов: `C0300000:10000` плюс ZDL-пулы `C0198000:8000`, `C0640000:60000`, `C0700000:60000`; стоковый пул `C0200000` намеренно исключён, чтобы не ломать загрузку |
 | `-spilimit LCD:FLASH` | stderr | два предела в МГц через двоеточие, например `1:50`; `0` выключает проверку. Рекомендуется явно задавать `1:50`: при разгоне до 408 МГц со стоковыми делителями SPI0 может дать 68 МГц на флеше, а эмулятор по умолчанию не считает это отказом |
 | `-gpiolog` | `gpio_log.txt` | все изменения ног GPIO со временем и PC |
 | `-cachelog [T1:T2]` | `cache_log.txt` | задержки кэша и попадания EDMA в кэшированную строку |
@@ -422,6 +423,7 @@ build/c6xboot.exe path/to/firmware/129_main_OS.bin -s 3 -q -flashfast \
 | `-flashlog` | `flash_log.txt` | real SPI flash program/erase transactions: cycle, `fl_addr`, `fl_cmd`, `fl_writes`, written address/byte or erase range |
 | `-stwtrace FILE[,ADDR:LEN]` | chosen file | trace `STW` writes into the output buffer: cycle, PC, `left i` / `right i`, address, source register, value and float; default window `11F04100:40` |
 | `-staleicode [ADDR:LEN]` | stdout | after the first write into the code region, instruction fetch returns pre-copy bytes until an L1P/L2 invalidate; on by default, `-no-staleicode` disables it |
+| (stale ranges) | stdout | by default several independent regions: `C0300000:10000` plus ZDL pools `C0198000:8000`, `C0640000:60000`, `C0700000:60000`; stock pool `C0200000` is excluded to keep stock boot intact |
 | `-spilimit LCD:FLASH` | stderr | two MHz limits separated by a colon, e.g. `1:50`; `0` disables the check. Recommended explicitly: at 408 MHz with stock dividers SPI0 can reach 68 MHz on flash, while the emulator does not treat this as a hardware failure by default |
 | `-gpiolog` | `gpio_log.txt` | all GPIO pin changes with time and PC |
 | `-cachelog [T1:T2]` | `cache_log.txt` | cache stalls and EDMA hits on cached lines |

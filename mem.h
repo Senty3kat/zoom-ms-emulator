@@ -38,11 +38,15 @@ typedef struct c6x_mem {
     uint32_t wwatch_lo, wwatch_hi;  /* RAM write watch range */
     void (*on_wwatch)(struct c6x_sys *s, uint32_t addr, int size, uint32_t val);
 
-    /* -staleicode: instruction fetch keeps pre-copy bytes until L1P/L2 invalidate */
-    uint32_t stale_lo, stale_hi;
-    uint8_t *stale_snap;
-    uint8_t stale_armed, stale_active;
-    uint64_t stale_fetches;
+    /* -staleicode: instruction fetch keeps pre-copy bytes until L1P/L2 invalidate.
+       Multiple ranges: stock boot area plus any ZDL executable pool. */
+#define STALE_MAX 8
+    uint32_t stale_lo[STALE_MAX], stale_hi[STALE_MAX];
+    uint8_t *stale_snap[STALE_MAX];
+    uint8_t stale_armed[STALE_MAX], stale_active[STALE_MAX];
+    uint64_t stale_fetches[STALE_MAX];
+    int stale_n;
+    uint64_t stale_fetches_total;
 
     /* default (no flag) warning: flat SDRAM map cannot model arena/looper
        reservations, so a pass here is not proof of hardware safety */

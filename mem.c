@@ -13,39 +13,44 @@ static void bootlog_hook(struct c6x_sys *s, uint32_t addr, int size, uint32_t va
    new bytes; instruction fetch keeps the old bytes until an L1P/L2 invalidate. */
 static void stale_touch(c6x_mem *m, uint32_t addr, uint32_t len)
 {
-    if (!m->stale_snap || !m->stale_armed) return;
-    if (addr + len <= m->stale_lo || addr >= m->stale_hi) return;
-    uint32_t span = m->stale_hi - m->stale_lo;
-    for (uint32_t i = 0; i < span; i++) {
-        uint8_t *p = mem_ptr(m, m->stale_lo + i);
-        m->stale_snap[i] = p ? *p : 0;
+    for (int r = 0; r < m->stale_n; r++) {
+        if (!m->stale_snap[r] || !m->stale_armed[r]) continue;
+        if (addr + len <= m->stale_lo[r] || addr >= m->stale_hi[r]) continue;
+        uint32_t span = m->stale_hi[r] - m->stale_lo[r];
+        for (uint32_t i = 0; i < span; i++) {
+            uint8_t *p = mem_ptr(m, m->stale_lo[r] + i);
+            m->stale_snap[r][i] = p ? *p : 0;
+        }
+        m->stale_armed[r] = 0;
+        m->stale_active[r] = 1;
     }
-    m->stale_armed = 0;
-    m->stale_active = 1;
 }
 
 void mem_stale_region(c6x_mem *m, uint32_t lo, uint32_t len)
 {
-    if (!len) return;
-    free(m->stale_snap);
-    m->stale_lo = lo;
-    m->stale_hi = lo + len;
-    m->stale_snap = calloc(len, 1);
-    m->stale_armed = 1;
-    m->stale_active = 0;
-    m->stale_fetches = 0;
+    if (!len || m->stale_n >= STALE_MAX) return;
+    int r = m->stale_n++;
+    free(m->stale_snap[r]);
+    m->stale_lo[r] = lo;
+    m->stale_hi[r] = lo + len;
+    m->stale_snap[r] = calloc(len, 1);
+    m->stale_armed[r] = 1;
+    m->stale_active[r] = 0;
+    m->stale_fetches[r] = 0;
 }
 
 void mem_stale_clear(c6x_mem *m)
 {
-    if (!m->stale_snap) return;
-    m->stale_active = 0;
-    m->stale_armed = 1;   /* a later overwrite can arm it again */
+    for (int r = 0; r < m->stale_n; r++) {
+        if (!m->stale_snap[r]) continue;
+        m->stale_active[r] = 0;
+        m->stale_armed[r] = 1;   /* a later overwrite can arm it again */
+    }
 }
 
 void mem_stale_on_invalidate(c6x_mem *m, uint32_t addr, uint32_t val)
 {
-    if (!m->stale_snap) return;
+    if (!m->stale_n) return;
     if (addr == 0x01840020u || addr == 0x01845004u || addr == 0x01845008u ||
         addr == 0x01845028u || addr == 0x0184401Cu || addr == 0x01844024u) {
         (void)val;
@@ -62,7 +67,7 @@ void mem_init(c6x_mem *m)
 
 void mem_free(c6x_mem *m)
 {
-    free(m->stale_snap);
+    for (int r = 0; r < m->stale_n; r++) free(m->stale_snap[r]);
     for (int i = 0; i < m->nregions; i++) free(m->regions[i].data);
     for (uint32_t i = 0; i < MEM_PAGES; i++) {
         /* metas are shared by aliases: free only the canonical mapping */
@@ -120,11 +125,17 @@ int mem_fetch_block(c6x_mem *m, uint32_t addr, void *out, uint32_t len)
     uint8_t *o = out;
     for (uint32_t i = 0; i < len; i++) {
         uint32_t a = addr + i;
-        if (m->stale_active && a >= m->stale_lo && a < m->stale_hi) {
-            o[i] = m->stale_snap[a - m->stale_lo];
-            m->stale_fetches++;
-            continue;
+        int stale_hit = 0;
+        for (int r = 0; r < m->stale_n; r++) {
+            if (m->stale_active[r] && a >= m->stale_lo[r] && a < m->stale_hi[r]) {
+                o[i] = m->stale_snap[r][a - m->stale_lo[r]];
+                m->stale_fetches[r]++;
+                m->stale_fetches_total++;
+                stale_hit = 1;
+                break;
+            }
         }
+        if (stale_hit) continue;
         uint8_t *p = mem_ptr(m, a);
         if (!p) return -1;
         o[i] = *p;

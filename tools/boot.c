@@ -721,6 +721,20 @@ int main(int argc, char **argv)
         if (!len || lo + len < lo) { fprintf(stderr, "-staleicode: invalid range\n"); return 1; }
         mem_stale_region(&s->mem, lo, len);
         fprintf(stderr, "STALEICODE: icode region %08X..%08X, armed\n", lo, lo + len - 1);
+        /* Default also covers every ZDL executable pool the CFW may copy code
+           into. Ranges are kept disjoint from the running OS image so the
+           stock boot is not poisoned; each arms independently on its own write. */
+        if (!strcmp(g_staleicode, "C0300000:10000")) {
+            static const struct { uint32_t lo, len; } pools[] = {
+                { 0xC0198000u, 0x00008000u },
+                { 0xC0640000u, 0x00060000u }, { 0xC0700000u, 0x00060000u },
+            };
+            for (unsigned i = 0; i < sizeof pools / sizeof pools[0]; i++) {
+                mem_stale_region(&s->mem, pools[i].lo, pools[i].len);
+                fprintf(stderr, "STALEICODE: ZDL pool region %08X..%08X, armed\n",
+                        pools[i].lo, pools[i].lo + pools[i].len - 1);
+            }
+        }
     }
     if (g_stwtrace && !cpu_stwtrace_open(&s->cpu, g_stwtrace)) return 1;
     static hot hist[1 << 16];
@@ -786,10 +800,14 @@ int main(int argc, char **argv)
                s->flash_fault, (unsigned long long)s->flash_fault_events, s->fl_status & 1);
     if (s->muxstrict)
         printf("MUXSTRICT: lcd_drop=%u flash_drop=%u\n", s->mux_lcd_drop, s->mux_flash_drop);
-    if (s->mem.stale_snap)
-        printf("STALEICODE: fetches=%llu active=%u range=%08X..%08X\n",
-               (unsigned long long)s->mem.stale_fetches, s->mem.stale_active,
-               s->mem.stale_lo, s->mem.stale_hi - 1);
+    if (s->mem.stale_n) {
+        printf("STALEICODE: fetches=%llu active_ranges=%d\n",
+               (unsigned long long)s->mem.stale_fetches_total, s->mem.stale_n);
+        for (int r = 0; r < s->mem.stale_n; r++)
+            printf("  range %d: %08X..%08X active=%u fetches=%llu\n", r,
+                   s->mem.stale_lo[r], s->mem.stale_hi[r] - 1, s->mem.stale_active[r],
+                   (unsigned long long)s->mem.stale_fetches[r]);
+    }
     printf("SPI0: shifting %.1f ms of %.1f ms; flash program/erase %.1f ms\n", s->spi_busy * 1000.0 / s->cpu_hz,
            cpu_now(&s->cpu) * 1000.0 / s->cpu_hz, s->fl_busy * 1000.0 / s->cpu_hz);
     printf("EDMA: events=%u transfers=%u errors=%u\n", s->edma.events, s->edma.transfers, s->edma.errors);
