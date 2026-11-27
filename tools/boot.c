@@ -24,7 +24,6 @@
      -ep0prereq           optional: withhold SETUP until SOFTCONN/INTRUSBE/INTRTXE/INTRRXE/FLUSHFIFO are set
      -ep0fifolanes        optional: require EP0 FIFO byte lanes 0x20/21/22/23 in order
      -reattachgap         optional: block re-enumeration when SOFTCONN off->on gap exceeds 2 ms
-     -usbwrapclk          optional: block USB attach when SYSCLK2 exceeds stock 150 MHz (300 MHz core)
      -sdramgarbage        optional: fill SDRAM with 0xA5A5A5A5 before AIS load (catch missing .bss zero-init)
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
@@ -421,9 +420,6 @@ int main(int argc, char **argv)
         } else if (!strcmp(a, "-reattachgap")) {
             if (!s->usb.enabled) usb_init(s);
             s->usb.reattach_gap_model = 1;
-        } else if (!strcmp(a, "-usbwrapclk")) {
-            if (!s->usb.enabled) usb_init(s);
-            s->usb.usbwrapclk_model = 1;
         } else if (!strcmp(a, "-ep0fifolanes")) {
             if (!s->usb.enabled) usb_init(s);
             s->usb.ep0_lanes_model = 1;

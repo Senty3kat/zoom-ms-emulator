@@ -939,15 +939,6 @@ void usb_sync(c6x_sys *s)
     u->next_tick = now + us(s, 50);
     switch (u->state) {
     case H_WAIT_CONNECT:
-        if (u->usbwrapclk_model && (s->cpu_hz / 2u) > 150000000u) {
-            u->usbwrapclk_bad = 1;
-            if (!u->ep0_prereq_logged) {
-                ulog(s, "USB wrapper clock %.1f MHz (SYSCLK2) above stock 150 MHz: attach blocked",
-                     (double)(s->cpu_hz / 2u) / 1e6);
-                u->ep0_prereq_logged = 1;
-            }
-            break;
-        }
         if (u->reattach_gap_model && u->reattach_rejected) {
             if (!u->ep0_prereq_logged) {
                 ulog(s, "enumeration blocked: SOFTCONN off->on gap too long (device removal)");
@@ -1110,9 +1101,6 @@ void usb_report(c6x_sys *s, FILE *f)
         fprintf(f, "USB reattach gaps: %u seen, %u too long, last %.3f ms (limit 2.000 ms)\n",
                 u->reattach_gaps_seen, u->reattach_gaps_bad,
                 (double)u->softconn_gap_cycles * 1000.0 / (double)s->cpu_hz);
-    if (u->usbwrapclk_model)
-        fprintf(f, "USB wrapper clock: SYSCLK2 %.1f MHz (stock 150.0), blocked=%d\n",
-                (double)(s->cpu_hz / 2u) / 1e6, u->usbwrapclk_bad);
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,
