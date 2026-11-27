@@ -15,7 +15,8 @@
      -t CYC [-tl N]      instruction trace from cycle CYC (trace.txt)
      -usb                attach a USB host: enumerates the pedal (usb.txt), MIDI log midi.txt
      -usbwav FILE        capture UAC isochronous IN to WAV (implies -usb)
-     -usbphy             log USB PHY prerequisite writes to usbphy_log.txt
+     -usbphy             log USB PHY writes and CFGCHIP2/PSC1 readbacks to usbphy_log.txt
+     -readback           print final CFGCHIP2/PSC1/DEVCTL readbacks (use with -usbphy)
      -usbvbus N|ok|fault|sense  DEVCTL VBUS level bits 4:3; sense = honor CFGCHIP2.VBUSSENSE
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
@@ -96,6 +97,7 @@ static double g_prof_sec0, g_prof_sec1;   /* as entered, for reporting */
 static uint64_t g_prof_samples;
 static uint32_t g_watch_addr, g_watch_val; static int g_watch_on, g_watch_hit;
 static int g_mmiohist;
+static int g_readback;
 static const char *g_loadflash;
 static char g_otacheck_path[512]; static int g_otacheck_slot = -1;
 static int g_oc_warned;
@@ -502,6 +504,8 @@ int main(int argc, char **argv)
             if (sscanf(argv[++i], "%x:%x", &g_watch_addr, &g_watch_val) == 2) g_watch_on = 1;
         } else if (!strcmp(a, "-mmiohist")) {
            g_mmiohist = 1;
+        } else if (!strcmp(a, "-readback")) {
+           g_readback = 1;
         } else if (!strcmp(a, "-regtrace") && i + 1 < argc) {
             s->cpu.regtrace = 1;
             s->cpu.regtracef = fopen(argv[++i], "w");
@@ -802,6 +806,12 @@ int main(int argc, char **argv)
             }
             printf("\n");
         }
+    }
+    if (g_readback && s->usbphy_logf) {
+        fprintf(s->usbphy_logf, "READBACK CFGCHIP2=%08X MDCTL1=%08X MDSTAT1=%08X PTSTAT=%08X DEVCTL=%08X\n",
+                sys_readback32(s, 0x01C14184u), sys_readback32(s, 0x01E27A04u),
+                sys_readback32(s, 0x01E27804u), sys_readback32(s, 0x01E27128u),
+                sys_readback32(s, 0x01E00460u));
     }
     usb_iso_wav_close(s);
     if (g_mmiohist) mmio_hist();

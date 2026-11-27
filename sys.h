@@ -12,6 +12,9 @@
 #define MMIO_BASE 0x01800000u
 #define MMIO_SIZE 0x00800000u
 
+struct c6x_sys;
+uint32_t sys_readback32(struct c6x_sys *s, uint32_t addr);
+
 typedef struct {
     uint32_t addr;
     uint32_t reads, writes;
@@ -41,6 +44,9 @@ typedef struct c6x_sys {
     int usbphy_kick0, usbphy_kick1;  /* unlock sequence seen */
     int usbphy_psc_on;        /* PSC1 MDCTL[1] NEXT=ON seen */
     int usbphy_cfgchip2;      /* CFGCHIP2 write seen */
+    uint64_t psc1_transition_until; /* PSC1 transition in progress until this cycle */
+    uint32_t usbphy_last_cfgchip2_rd, usbphy_last_mdstat1_rd, usbphy_last_ptstat_rd;
+    int usbphy_have_cfgchip2_rd, usbphy_have_mdstat1_rd, usbphy_have_ptstat_rd;
     double spi_lcd_max, spi_flash_max;  /* -spilimit, MHz; 0 = no check */
     int spi_limit_warned;
     int hwclose;                 /* -hwclose: hardware-close start model */

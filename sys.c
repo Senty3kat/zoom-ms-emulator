@@ -678,9 +678,14 @@ static uint32_t mmio_read(c6x_sys *s, uint32_t addr, int size)
         else v = R(a);
     } else if ((a >= 0x01C10000 && a < 0x01C11000) || (a >= 0x01E27000 && a < 0x01E28000)) { /* PSC */
         uint32_t base = a & ~0xFFFu, off = a - base;
-        if (off == 0x128) v = 0;                         /* PTSTAT */
+        uint64_t now = cpu_now(&s->cpu);
+        if (off == 0x128) v = (now < s->psc1_transition_until) ? 1u : 0u; /* PTSTAT.GOSTAT */
         else if (off >= 0x200 && off < 0x208) v = 0x301; /* PDSTAT: on */
-        else if (off >= 0x800 && off < 0x880) v = (R(base + 0xA00 + (off - 0x800)) & 0x1F) | 0x1E00;
+        else if (off >= 0x800 && off < 0x880) {          /* MDSTAT: STATE=0 while transitioning */
+            uint32_t next = R(base + 0xA00 + (off - 0x800)) & 0x1F;
+            v = (now < s->psc1_transition_until) ? 0u : next;
+            v |= 0x1E00;
+        }
         else v = R(a);
     } else if (a >= 0x01C20000 && a < 0x01C22000) {    /* TIMER64P0/1 */
         v = tmr_read(s, (a >> 12) & 1, a & 0xFFF);
@@ -747,11 +752,38 @@ static uint32_t mmio_read(c6x_sys *s, uint32_t addr, int size)
         v = R(a);
     }
     m->last = v;
+    if (s->usbphy_logf) {
+        const char *rtag = NULL;
+        int skip = 0;
+        if (a == 0x01C14184u) {
+            rtag = "CFGCHIP2";
+            if (s->usbphy_have_cfgchip2_rd && v == s->usbphy_last_cfgchip2_rd) skip = 1;
+            s->usbphy_last_cfgchip2_rd = v; s->usbphy_have_cfgchip2_rd = 1;
+        } else if (a == 0x01E27A04u) rtag = "PSC1_MDCTL1";
+        else if (a == 0x01E27804u) {
+            rtag = "PSC1_MDSTAT1";
+            if (s->usbphy_have_mdstat1_rd && v == s->usbphy_last_mdstat1_rd) skip = 1;
+            s->usbphy_last_mdstat1_rd = v; s->usbphy_have_mdstat1_rd = 1;
+        } else if (a == 0x01E27120u) rtag = "PSC1_PTCMD";
+        else if (a == 0x01E27128u) {
+            rtag = "PSC1_PTSTAT";
+            if (s->usbphy_have_ptstat_rd && v == s->usbphy_last_ptstat_rd) skip = 1;
+            s->usbphy_last_ptstat_rd = v; s->usbphy_have_ptstat_rd = 1;
+        } else if (a == 0x01E00460u) rtag = "USB_DEVCTL";
+        if (rtag && !skip)
+            fprintf(s->usbphy_logf, "%10llu pc=%08X RD %s %08X = %08X\n",
+                    (unsigned long long)cpu_now(&s->cpu), s->cpu.cr[CR_PCE1], rtag, a, v);
+    }
     if (s->logf && a >= s->watch_lo && a < s->watch_hi)
         fprintf(s->logf, "%10llu pc=%08X R %08X = %08X\n", (unsigned long long)cpu_now(&s->cpu), s->cpu.cr[CR_PCE1], a, v);
     if (size == 1) return (v >> (8 * (addr & 3))) & 0xFF;
     if (size == 2) return (v >> (8 * (addr & 2))) & 0xFFFF;
     return v;
+}
+
+uint32_t sys_readback32(c6x_sys *s, uint32_t addr)
+{
+    return mmio_read(s, addr, 4);
 }
 
 static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
@@ -784,7 +816,10 @@ static void mmio_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
         } else if (addr == 0x01E27A04u) {
             tag = "PSC1_MDCTL1";
             if ((val & 3u) == 3u) s->usbphy_psc_on = 1;
-        } else if (addr == 0x01E27120u) tag = "PSC1_PTCMD";
+        } else if (addr == 0x01E27120u) {
+            tag = "PSC1_PTCMD";
+            if (s->usbphy_psc_on) s->psc1_transition_until = cpu_now(&s->cpu) + 1000;
+        }
         else if (addr == 0x01E27128u) tag = "PSC1_PTSTAT";
         else if (addr == 0x01E27804u) tag = "PSC1_PDSTAT";
         else if (addr == 0x01E00460u) tag = "USB_DEVCTL";
@@ -975,6 +1010,9 @@ c6x_sys *sys_create(void)
     s->usb.vbus_level = 3;                /* default: VBusValid on the cable */
     s->usb.vbus_sense_model = 0;          /* optional fault model, disabled by default */
     s->usb.usb0_vbussense = 1;            /* until the firmware writes CFGCHIP2 */
+    s->psc1_transition_until = 0;
+    s->usbphy_last_cfgchip2_rd = s->usbphy_last_mdstat1_rd = s->usbphy_last_ptstat_rd = 0;
+    s->usbphy_have_cfgchip2_rd = s->usbphy_have_mdstat1_rd = s->usbphy_have_ptstat_rd = 0;
     s->flash_size = 4 * 1024 * 1024;
     s->flash = malloc(s->flash_size);
     s->asp.capout = 44100 * 2 * 60;
