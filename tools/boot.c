@@ -16,7 +16,7 @@
      -usb                attach a USB host: enumerates the pedal (usb.txt), MIDI log midi.txt
      -usbwav FILE        capture UAC isochronous IN to WAV (implies -usb)
      -usbphy             log USB PHY prerequisite writes to usbphy_log.txt
-     -usbvbus N|ok|fault  DEVCTL VBUS level 0..3 (3=VBusValid, ok=3, fault=1)
+     -usbvbus N|ok|fault  DEVCTL VBUS level 0..3 in bits 4:3 (3=VBusValid)
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
      -midifile FILE      lines "MS HEX..." to send at MS, or "w HEX..." to send after the

@@ -294,7 +294,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-hwclose` | hardware-close старт включён по умолчанию: останов без записи SPIFMT0/1, диагностический порог LCD SPI 25 МГц, synthetic native IRQ residue без `DINT`, учёт остаточной периферии boot ROM; `-no-hwclose` отключает. Порог эмулятора, не измеренный предел железа | stderr |
 | `-hwlcdlimit МГЦ` | переопределить диагностический порог LCD SPI для `-hwclose`; по умолчанию 25 МГц | stderr |
 | устаревшие вызовы до `v1.1` | `-usbtrace`, `-usblog`, `-midilog`, `-cachelogall`, `-hwclose=0/1`: печатают справку, текущую версию `v1.1` и подсказку по замене вместо ошибки | stderr |
-| `-usbvbus 0..3\|ok\|fault` | уровень VBUS в битах 3:2 `DEVCTL`: 3/`ok` — VBusValid, 1/`fault` — низкий уровень без перечисления; по умолчанию 3 | stdout |
+| `-usbvbus 0..3\|ok\|fault` | уровень VBUS в битах 4:3 `DEVCTL`: 3/`ok` — VBusValid, 1/`fault` — низкий уровень без перечисления; по умолчанию 3 | stdout |
 | `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются. Рекомендуется для всех bare-metal прогонов | stdout |
 | `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux; быстро ловит firmware, который не вернул LCD mux после flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | опциональные отказы SPI flash: `wp` игнорирует WREN, `wip` не сбрасывает WIP, `rx` не готовит SPIBUF RX, `long` возвращает FF в длинном чтении, `mux` блокирует flash-слово при чужом CS/mux; по умолчанию выключено | stdout |

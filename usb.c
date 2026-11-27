@@ -241,7 +241,7 @@ static uint8_t core_rd8(c6x_sys *s, uint32_t c)
     case 0x0D: return (uint8_t)(u->frame >> 8);
     case 0x0E: return u->index;
     case 0x0F: return u->testmode;
-    case 0x60: return (uint8_t)((u->devctl & ~0x0Cu) | ((u->vbus_level & 3u) << 2));
+    case 0x60: return (uint8_t)((u->devctl & ~0x18u) | ((u->vbus_level & 3u) << 3));
     }
     if (c >= 0x10 && c < 0x20) return u->index < USB_NEP ? epreg_rd8(u, u->index, (int)(c - 0x10)) : 0;
     if (c >= 0x100 && c < 0x100 + 16 * USB_NEP) return epreg_rd8(u, (int)((c - 0x100) >> 4), (int)(c & 15));
@@ -909,7 +909,6 @@ void usb_init(c6x_sys *s)
     c6x_usb *u = &s->usb;
     u->enabled = 1;
     u->devctl = 0x99;          /* B-device, session; VBUS bits are host-supplied */
-    if (u->vbus_level < 3) u->devctl &= ~1u;      /* optional fault: no session */
     u->state = H_WAIT_CONNECT;
     u->next_tick = 0;
     if (!u->log) u->log = fopen("usb.txt", "w");
@@ -969,7 +968,7 @@ void usb_report(c6x_sys *s, FILE *f)
     static const char *st[] = { "waiting for VBusValid or SOFTCONN", "bus reset", "enumerating", "running" };
     fprintf(f, "USB: %s, %s, MIDI sent %d/%d, received %d message(s)\n", st[u->state],
             u->configured ? "configured" : "not configured", u->outpos, u->nout, u->nin);
-    fprintf(f, "USB VBUS: level %d (DEVCTL bits 3:2), VBusValid %s, DEVCTL %02X\n",
+    fprintf(f, "USB VBUS: level %d (DEVCTL bits 4:3), VBusValid %s, DEVCTL %02X\n",
             u->vbus_level, u->vbus_level == 3 ? "yes" : "no", core_rd8(s, 0x60));
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
