@@ -241,7 +241,7 @@ static uint8_t core_rd8(c6x_sys *s, uint32_t c)
     case 0x0D: return (uint8_t)(u->frame >> 8);
     case 0x0E: return u->index;
     case 0x0F: return u->testmode;
-    case 0x60: return u->devctl;
+    case 0x60: return u->vbus_fault ? (uint8_t)(u->devctl & ~1u) : u->devctl;
     }
     if (c >= 0x10 && c < 0x20) return u->index < USB_NEP ? epreg_rd8(u, u->index, (int)(c - 0x10)) : 0;
     if (c >= 0x100 && c < 0x100 + 16 * USB_NEP) return epreg_rd8(u, (int)((c - 0x100) >> 4), (int)(c & 15));
@@ -837,6 +837,7 @@ void usb_sync(c6x_sys *s)
     u->next_tick = now + us(s, 50);
     switch (u->state) {
     case H_WAIT_CONNECT:
+        if (u->vbus_fault) break;                 /* no VBUS: firmware may poll DEVCTL, but SESSION=0 */
         /* Stock 70CDR 2.10 attaches with POWER=0x40; hardware is ground truth. */
         if (u->power & 0x40) {
             if (!u->connect_at) { u->connect_at = now + us(s, 100000); ulog(s, "device attached (SOFTCONN)"); }
@@ -908,6 +909,7 @@ void usb_init(c6x_sys *s)
     c6x_usb *u = &s->usb;
     u->enabled = 1;
     u->devctl = 0x99;          /* B-device, VBUS valid, session */
+    if (u->vbus_fault) u->devctl &= ~1u;          /* DEVCTL.SESSION=0 */
     u->state = H_WAIT_CONNECT;
     u->next_tick = 0;
     if (!u->log) u->log = fopen("usb.txt", "w");
@@ -964,7 +966,7 @@ void usb_report(c6x_sys *s, FILE *f)
 {
     c6x_usb *u = &s->usb;
     if (!u->enabled) return;
-    static const char *st[] = { "waiting for SOFTCONN", "bus reset", "enumerating", "running" };
+    static const char *st[] = { "waiting for VBUS/SESSION or SOFTCONN", "bus reset", "enumerating", "running" };
     fprintf(f, "USB: %s, %s, MIDI sent %d/%d, received %d message(s)\n", st[u->state],
             u->configured ? "configured" : "not configured", u->outpos, u->nout, u->nin);
     if (u->iso_ep || u->iso_packets)
