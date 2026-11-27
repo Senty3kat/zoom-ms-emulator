@@ -307,21 +307,23 @@ static void core_wr(c6x_sys *s, uint32_t c, int size, uint32_t v)
                on the pedal. Use that as the model ground truth: 0x40 attaches. */
             if ((b ^ u->power) & 0x40) {
                 ulog(s, "POWER.SOFTCONN %s", (b & 0x40) ? "on" : "off");
-                if (!(b & 0x40)) {
-                    u->softconn_off_at = cpu_now(&s->cpu);
-                } else if (u->softconn_off_at) {
-                    uint64_t gap = cpu_now(&s->cpu) - u->softconn_off_at;
-                    u->softconn_gap_cycles = gap;
-                    u->softconn_off_at = 0;
-                    u->reattach_gaps_seen++;
-                    if (gap > us(s, 2000)) {   /* stock is ~0.186 ms; 2 ms is a safe A/B threshold */
-                        u->reattach_gaps_bad++;
-                        u->reattach_rejected = 1;
-                        ulog(s, "SOFTCONN off->on gap %.3f ms too long: host treats as device removal",
-                             (double)gap * 1000.0 / (double)s->cpu_hz);
-                    } else {
-                        u->reattach_rejected = 0;
-                    }
+            }
+            /* Measure from the LAST off write, not the first: stock reattach
+               writes POWER=0 more than once before POWER=0x40. */
+            if (!(b & 0x40)) {
+                u->softconn_off_at = cpu_now(&s->cpu);
+            } else if (u->softconn_off_at) {
+                uint64_t gap = cpu_now(&s->cpu) - u->softconn_off_at;
+                u->softconn_gap_cycles = gap;
+                u->softconn_off_at = 0;
+                u->reattach_gaps_seen++;
+                if (gap > us(s, 2000)) {   /* stock is ~0.186 ms; 2 ms is a safe A/B threshold */
+                    u->reattach_gaps_bad++;
+                    u->reattach_rejected = 1;
+                    ulog(s, "SOFTCONN off->on gap %.3f ms too long: host treats as device removal",
+                         (double)gap * 1000.0 / (double)s->cpu_hz);
+                } else {
+                    u->reattach_rejected = 0;
                 }
             }
             if ((b ^ u->power) & 0x80) ulog(s, "POWER.ISOUPDATE %s", (b & 0x80) ? "on" : "off");
