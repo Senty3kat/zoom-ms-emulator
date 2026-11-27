@@ -415,8 +415,13 @@ void usb_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
     if (off < 0x400) {
         switch (off) {
         case 0x04:
-            u->ctrlr = val & ~1u;
-            if (val & 1) { ep_reset(u); u->intsrc = 0; u->intrtx = u->intrrx = 0; u->intrusb = 0; }
+            u->ctrlr = val & ~1u;   /* CTRLR reset bit is self-clearing */
+            if (val & 1) {
+                u->ctrlr_resets++;
+                ulog(s, "CTRLR software reset (bit0 self-cleared)");
+                ep_reset(u);
+                u->intsrc = 0; u->intrtx = u->intrrx = 0; u->intrusb = 0;
+            }
             break;
         case 0x10: u->mode = val; break;
         case 0x24: u->intsrc |= val; break;
@@ -1064,6 +1069,7 @@ void usb_report(c6x_sys *s, FILE *f)
         fprintf(f, "USB EP0 prerequisites: on, SETUP delivery mask %02X (0 = all met)\n", u->ep0_prereq_missing);
     if (u->ep0_lanes_model)
         fprintf(f, "USB EP0 FIFO lanes: on, lane_bad=%d\n", u->ep0_lane_bad);
+    fprintf(f, "USB CTRLR resets: %u (bit0 reads back 0 after each reset write)\n", u->ctrlr_resets);
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,

@@ -309,7 +309,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-romrepaint МС` | период синтетической перерисовки boot-лого при `-hwclose`; диагностический параметр, не hardware-факт | stderr |
 | `-bootlog` | ловить bootmini-чекпоинты по однородным LCD-кадрам и логировать копирование FWIMG | `boot_log.txt` |
 | `-otacheck ФАЙЛ A/B` | сравнить содержимое слота A/B с FWIMG после прогона OTA | stdout |
-| без `-q` | регистры CPU, 20 самых «горячих» адресов, обращения к периферии | консоль |
+| без `-q` | регистры CPU, 20 самых «горячих» адресов, обращения к периферии, счётчик `USB CTRLR resets` | консоль |
 
 ### Новые диагностические ключи
 
@@ -726,7 +726,7 @@ overhead, not useful effect work.
 | `-muxstrict` | honor PINMUX7 CS ownership; recommended for bare-metal runs | stdout |
 | `-muxhalt` | fatal on an LCD write with the wrong mux, catches firmware that does not restore LCD mux after flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | optional SPI flash faults; disabled by default | stdout |
-| without `-q` | CPU registers, 20 hottest addresses, peripheral accesses | console |
+| without `-q` | CPU registers, 20 hottest addresses, peripheral accesses, `USB CTRLR resets` counter | console |
 
 ### New diagnostic options
 

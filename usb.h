@@ -56,6 +56,7 @@ typedef struct c6x_usb {
     uint8_t ep0_lanes_fatal;     /* enumeration must fail after a lane error */
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
+    uint32_t ctrlr_resets;       /* CTRLR bit0 software reset observed */
     int line;                    /* interrupt line level last reported */
     /* MUSB core */
     uint8_t faddr, power, index, testmode, devctl, intrusbe;
