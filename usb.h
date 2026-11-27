@@ -47,6 +47,9 @@ typedef struct c6x_usb {
     int power_hsmode;            /* optional: report POWER.HSMODE bit4 as read-only status */
     int csr0_rxbit_required;     /* optional: require RXPKTRDY bit0 with SERV_RXPKTRDY */
     int ep0_prereq;              /* optional: gate SETUP delivery on stock EP0 prerequisites */
+    int wrapirq_model;           /* optional: require INTMSKSETR + INTCLRR before attach */
+    uint8_t wrap_irqmask_seen;   /* INTMSKSETR 0x01E00030 written */
+    uint8_t wrap_irqclear_seen;  /* INTCLRR 0x01E00028 written */
     uint8_t ep0_flush_seen;      /* CSR0 FLUSHFIFO written after POWER.SOFTCONN */
     uint8_t ep0_prereq_missing;  /* bitmask of unmet prerequisites for the report */
     uint8_t ep0_prereq_logged;

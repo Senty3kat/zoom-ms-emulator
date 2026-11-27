@@ -1024,6 +1024,9 @@ c6x_sys *sys_create(void)
     s->usb.ep0_lane_bad = 0;
     s->usb.ep0_lanes_fatal = 0;
     s->usb.ctrlr_resets = 0;
+    s->usb.wrapirq_model = 0;
+    s->usb.wrap_irqmask_seen = 0;
+    s->usb.wrap_irqclear_seen = 0;
     s->usb.reattach_gap_model = 0;
     s->usb.softconn_off_at = 0;
     s->usb.softconn_gap_cycles = 0;

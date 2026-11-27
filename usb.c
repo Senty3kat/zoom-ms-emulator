@@ -445,9 +445,15 @@ void usb_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
             break;
         case 0x10: u->mode = val; break;
         case 0x24: u->intsrc |= val; break;
-        case 0x28: u->intsrc &= ~val; break;
+        case 0x28:                                    /* INTCLRR: clear pending wrapper IRQs */
+            u->intsrc &= ~val;
+            u->wrap_irqclear_seen = 1;
+            break;
         case 0x2C: u->intmsk = val; break;
-        case 0x30: u->intmsk |= val; break;
+        case 0x30:                                    /* INTMSKSETR: wrapper IRQ enables */
+            u->intmsk |= val;
+            if (val & 0x1Fu) u->wrap_irqmask_seen = 1;
+            break;
         case 0x34: u->intmsk &= ~val; break;
         case 0x3C: irq_eval(s, 1); return;                  /* EOIR: re-raise if still pending */
         default: break;
@@ -946,6 +952,13 @@ void usb_sync(c6x_sys *s)
             }
             break;
         }
+        if (u->wrapirq_model && !(u->wrap_irqmask_seen && u->wrap_irqclear_seen)) {
+            if (!u->ep0_prereq_logged) {
+                ulog(s, "wrapper IRQ prerequisites missing (INTMSKSETR + INTCLRR) -> no attach");
+                u->ep0_prereq_logged = 1;
+            }
+            break;
+        }
         if (usb_effective_vbus(u) < 3) break;      /* VBUS below VBusValid: no D+ pull-up, no enumeration */
         if (u->pinmux9_required && ((u->pinmux9 & 0xF0u) != 0x10u)) break;
         /* Stock 70CDR 2.10 attaches with POWER=0x40; hardware is ground truth. */
@@ -1097,6 +1110,9 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->ep0_lanes_model)
         fprintf(f, "USB EP0 FIFO lanes: on, lane_bad=%d\n", u->ep0_lane_bad);
     fprintf(f, "USB CTRLR resets: %u (bit0 reads back 0 after each reset write)\n", u->ctrlr_resets);
+    if (u->wrapirq_model)
+        fprintf(f, "USB wrapper IRQ: INTMSKSETR=%d INTCLRR=%d (0 = blocked)\n",
+                u->wrap_irqmask_seen, u->wrap_irqclear_seen);
     if (u->reattach_gap_model)
         fprintf(f, "USB reattach gaps: %u seen, %u too long, last %.3f ms (limit 2.000 ms)\n",
                 u->reattach_gaps_seen, u->reattach_gaps_bad,
