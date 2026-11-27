@@ -592,6 +592,10 @@ static void host_setup(c6x_sys *s, const uint8_t setup[8])
     c6x_usb *u = &s->usb;
     usb_ep *e = &u->ep[0];
     memcpy(u->setup, setup, 8);
+    if (u->full_path) {
+        u->path_setups++;
+        if (u->path_stage < 4) u->path_stage = 4;
+    }
     memcpy(e->rx, setup, 8);
     e->rxn = 8;
     e->rxpos = 0;
@@ -999,6 +1003,18 @@ void usb_sync(c6x_sys *s)
             }
             break;
         }
+        if (u->full_path) {
+            int lvl = usb_effective_vbus(u);
+            if (u->path_stage == 0) {
+                ulog(s, "FULLPATH stage0 VBUS: level %dh (%s); peripheral session needs >= 4.01 V / VBusValid",
+                     lvl, lvl >= 3 ? "VBusValid" : lvl >= 1 ? "above SessionEnd, below AValid" : "below SessionEnd");
+                u->path_stage = 1;
+            }
+            /* SPRUFM9H Table 84: 3h = above VBusValid. Below that the PHY does not
+               assert VBusValid, so the host never sees a D+ pull-up and never
+               starts bus reset / EP0 SETUP, regardless of SESSION or SOFTCONN. */
+            if (lvl < 3) break;
+        }
         if (usb_effective_vbus(u) < 3) break;      /* VBUS below VBusValid: no D+ pull-up, no enumeration */
         if (u->pinmux9_required && ((u->pinmux9 & 0xF0u) != 0x10u)) break;
         if (u->usbrefclk_model && ((u->pinmux9 >> 8) & 0xFu) != 0x4u) {
@@ -1031,6 +1047,11 @@ void usb_sync(c6x_sys *s)
                     break;
                 }
                 ulog(s, "bus reset");
+                if (u->full_path) {
+                    u->path_bus_resets++;
+                    u->path_stage = 3;
+                    ulog(s, "FULLPATH stage3 bus reset: FADDR/INTR masks/EP state cleared");
+                }
                 u->faddr = 0;
                 ep_reset(u);
                 core_usb_int(s, 2);                          /* RESET */
@@ -1174,6 +1195,9 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->power_hsmode)
         fprintf(f, "USB POWER HSMODE model: on, reported POWER=%02X, attach uses SOFTCONN only\n",
                 (unsigned)(core_rd8(s, 0x01) & 0xFF));
+    if (u->full_path)
+        fprintf(f, "USB full path: on, stage %d, VBUS level %dh, bus resets %u, SETUP %u, configured %d, FADDR %02X\n",
+                u->path_stage, usb_effective_vbus(u), u->path_bus_resets, u->path_setups, u->configured, u->faddr);
     if (u->inherit_enum)
         fprintf(f, "USB inherit-enum model: on, address %02X, SETUP requests 0\n", u->inherit_addr);
     if (u->suspend_model)

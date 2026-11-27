@@ -47,6 +47,11 @@ typedef struct c6x_usb {
     int usbrefclk_model;         /* optional: require PINMUX9[11:8]=4h (USB_REFCLKIN) */
     int usbphy_polarity_model;   /* optional: require CFGCHIP2 DATPOL=1 and PHY_PLLON=1 */
     uint32_t cfgchip2;           /* last CFGCHIP2 write */
+    int full_path;               /* optional: TI-documented VBUS->session->reset->EP0 path as a whole */
+    int path_stage;              /* 0 VBUS, 1 session, 2 attach, 3 bus reset, 4 SETUP, 5 SET_ADDRESS, 6 GET_DESC, 7 SET_CFG */
+    uint32_t path_bus_resets;    /* bus resets observed in full-path mode */
+    uint32_t path_setups;        /* EP0 SETUP requests delivered in full-path mode */
+    uint32_t path_eoir;          /* EOIR writes observed */
     int inherit_enum;            /* optional: host already configured by bootloader, no EP0 */
     uint8_t inherit_addr;        /* FADDR inherited from the bootloader (0x3A) */
     int suspend_model;           /* optional: model POWER.SUSPENDM (bit1) and RESUME release */
