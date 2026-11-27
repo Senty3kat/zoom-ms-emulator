@@ -803,8 +803,9 @@ static void host_enum(c6x_sys *s)
             if (ok) {
                 u->configured = 1;
                 ulog(s, "configured: bulk OUT ep %d (%d B), bulk IN ep %d (%d B)", u->ep_out, u->mps_out, u->ep_in, u->mps_in);
-                fprintf(stderr, "USB: enumerated VID %04X PID %04X, configured\n",
-                        u->devdesc[8] | (u->devdesc[9] << 8), u->devdesc[10] | (u->devdesc[11] << 8));
+                if (!u->inherit_enum)
+                    fprintf(stderr, "USB: enumerated VID %04X PID %04X, configured\n",
+                            u->devdesc[8] | (u->devdesc[9] << 8), u->devdesc[10] | (u->devdesc[11] << 8));
                 if (u->iso_ep) {
                     u->ctl_step = 11;
                     host_setup(s, set_iface);
@@ -1018,6 +1019,17 @@ void usb_sync(c6x_sys *s)
         if (u->power & 0x40) {
             if (!u->connect_at) { u->connect_at = now + us(s, 100000); ulog(s, "device attached (SOFTCONN)"); }
             else if (now >= u->connect_at) {
+                if (u->inherit_enum) {
+                    ulog(s, "enumeration inherited from bootloader: address %02X", u->inherit_addr);
+                    u->faddr = u->inherit_addr;
+                    u->addr = u->inherit_addr;
+                    u->ep_out = 3; u->mps_out = 64;
+                    u->ep_in = 4;  u->mps_in = 64;
+                    u->configured = 1;
+                    u->state = H_RUN;
+                    ulog(s, "configured: bulk OUT ep 3 (64 B), bulk IN ep 4 (64 B)");
+                    break;
+                }
                 ulog(s, "bus reset");
                 u->faddr = 0;
                 ep_reset(u);
@@ -1162,6 +1174,8 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->power_hsmode)
         fprintf(f, "USB POWER HSMODE model: on, reported POWER=%02X, attach uses SOFTCONN only\n",
                 (unsigned)(core_rd8(s, 0x01) & 0xFF));
+    if (u->inherit_enum)
+        fprintf(f, "USB inherit-enum model: on, address %02X, SETUP requests 0\n", u->inherit_addr);
     if (u->suspend_model)
         fprintf(f, "USB suspend model: on, active=%d, pulses=%u, last %llu ms\n",
                 u->suspend_active, u->resume_pulses, (unsigned long long)u->resume_last_ms);

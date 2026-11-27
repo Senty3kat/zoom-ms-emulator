@@ -22,6 +22,7 @@
      -usbrefclk           optional: require PINMUX9[11:8] = 4h (USB_REFCLKIN)
      -usbphypol           optional: require CFGCHIP2 DATPOL=1 and PHY_PLLON=1
      -suspend             optional: model POWER.SUSPENDM; SETUP is withheld until RESUME or INTRUSB read
+     -inheritenum        optional: host already configured by bootloader; skip SET_ADDRESS/GET_DESCRIPTOR/SET_CONFIGURATION
      -powerhsmode         optional: report POWER.HSMODE bit4 as read-only status
      -csr0rxbit           optional: require RXPKTRDY bit0 with SERV_RXPKTRDY (A/B with 0x40 vs 0x41)
      -ep0prereq           optional: withhold SETUP until SOFTCONN/INTRUSBE/INTRTXE/INTRRXE/FLUSHFIFO are set
@@ -453,6 +454,11 @@ int main(int argc, char **argv)
         } else if (!strcmp(a, "-suspend")) {
             if (!s->usb.enabled) usb_init(s);
             s->usb.suspend_model = 1;
+        } else if (!strcmp(a, "-inheritenum")) {
+            if (!s->usb.enabled) usb_init(s);
+            s->usb.inherit_enum = 1;
+            s->usb.inherit_addr = 0x3A;
+            s->usb.faddr = 0x3A;
         } else if (!strcmp(a, "-usbphy")) {
             if (!s->usbphy_logf) s->usbphy_logf = fopen("usbphy_log.txt", "w");
         } else if (!strcmp(a, "-usbphystrict")) {

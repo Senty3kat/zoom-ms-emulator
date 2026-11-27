@@ -47,6 +47,8 @@ typedef struct c6x_usb {
     int usbrefclk_model;         /* optional: require PINMUX9[11:8]=4h (USB_REFCLKIN) */
     int usbphy_polarity_model;   /* optional: require CFGCHIP2 DATPOL=1 and PHY_PLLON=1 */
     uint32_t cfgchip2;           /* last CFGCHIP2 write */
+    int inherit_enum;            /* optional: host already configured by bootloader, no EP0 */
+    uint8_t inherit_addr;        /* FADDR inherited from the bootloader (0x3A) */
     int suspend_model;           /* optional: model POWER.SUSPENDM (bit1) and RESUME release */
     int suspend_active;          /* SUSPENDM set: SETUP is withheld until cleared */
     uint64_t suspend_since;      /* cycle when SUSPENDM was set */
