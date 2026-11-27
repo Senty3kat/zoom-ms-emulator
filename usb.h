@@ -50,6 +50,10 @@ typedef struct c6x_usb {
     uint8_t ep0_flush_seen;      /* CSR0 FLUSHFIFO written after POWER.SOFTCONN */
     uint8_t ep0_prereq_missing;  /* bitmask of unmet prerequisites for the report */
     uint8_t ep0_prereq_logged;
+    int ep0_lanes_model;         /* optional: enforce FIFO0 byte lanes 0x20..0x23 */
+    uint8_t ep0_lane_pos;        /* expected lane of the next EP0 FIFO byte */
+    uint8_t ep0_lane_bad;        /* a byte was written to the wrong FIFO lane */
+    uint8_t ep0_lanes_fatal;     /* enumeration must fail after a lane error */
     /* wrapper */
     uint32_t ctrlr, mode, intsrc, intmsk;
     int line;                    /* interrupt line level last reported */

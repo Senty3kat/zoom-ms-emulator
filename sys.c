@@ -1019,6 +1019,10 @@ c6x_sys *sys_create(void)
     s->usb.ep0_flush_seen = 0;
     s->usb.ep0_prereq_missing = 0;
     s->usb.ep0_prereq_logged = 0;
+    s->usb.ep0_lanes_model = 0;
+    s->usb.ep0_lane_pos = 0;
+    s->usb.ep0_lane_bad = 0;
+    s->usb.ep0_lanes_fatal = 0;
     s->psc1_transition_until = 0;
     s->usbphy_last_cfgchip2_rd = s->usbphy_last_mdstat1_rd = s->usbphy_last_ptstat_rd = 0;
     s->usbphy_have_cfgchip2_rd = s->usbphy_have_mdstat1_rd = s->usbphy_have_ptstat_rd = 0;

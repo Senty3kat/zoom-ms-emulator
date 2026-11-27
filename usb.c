@@ -160,6 +160,7 @@ static void csr0_write(c6x_sys *s, uint16_t v, uint16_t mask)
     uint16_t w = v & mask;
     if (w & (1u << 8)) {                                                                  /* FLUSHFIFO */
         e->txn = 0; e->rxn = e->rxpos = 0; e->txcsr &= (uint16_t)~3u;
+        u->ep0_lane_pos = 0; u->ep0_lane_bad = 0;
         if (u->power & 0x40) u->ep0_flush_seen = 1;
     }
     if ((mask & 4) && !(v & 4)) e->txcsr &= (uint16_t)~4u;                                   /* SENTSTALL w0c */
@@ -181,7 +182,10 @@ static void csr0_write(c6x_sys *s, uint16_t v, uint16_t mask)
             if (u->ctl_out_sent) { u->ctl_phase = CT_STATUS; u->ctl_out_sent = 0; }
         }
     }
-    if (w & 2) e->txcsr |= 2;                                                                /* TXPKTRDY */
+    if (w & 2) {                                                                             /* TXPKTRDY */
+        e->txcsr |= 2;
+        u->ep0_lane_pos = 0;   /* FIFO byte lanes restart at 0 for every IN packet */
+    }
     if (w & (1u << 5)) { u->ctl_phase = CT_STALL; }                                          /* SENDSTALL */
 }
 
@@ -331,11 +335,23 @@ static uint32_t fifo_rd(c6x_sys *s, int ep, int size)
     return v;
 }
 
-static void fifo_wr(c6x_sys *s, int ep, int size, uint32_t v)
+static void fifo_wr(c6x_sys *s, int ep, int lane, int size, uint32_t v)
 {
-    usb_ep *e = &s->usb.ep[ep];
-    for (int i = 0; i < size; i++)
+    c6x_usb *u = &s->usb;
+    usb_ep *e = &u->ep[ep];
+    for (int i = 0; i < size; i++) {
+        if (ep == 0 && u->ep0_lanes_model) {
+            int want = u->ep0_lane_pos & 3;
+            if (((lane + i) & 3) != want) {
+                if (!u->ep0_lane_bad)
+                    ulog(s, "EP0 FIFO byte lane %d, expected %d -> descriptor data invalid",
+                         (lane + i) & 3, want);
+                u->ep0_lane_bad = 1;
+            }
+            u->ep0_lane_pos = (uint8_t)((want + 1) & 3);
+        }
         if (e->txn < USB_FIFO) e->tx[e->txn++] = (uint8_t)(v >> (8 * i));
+    }
 }
 
 /* ---------------- register interface ---------------- */
@@ -382,7 +398,11 @@ void usb_write(c6x_sys *s, uint32_t addr, int size, uint32_t val)
     uint32_t off = addr - 0x01E00000u;
     if (off >= 0x400 && off < 0x1000) {
         uint32_t c = off - 0x400;
-        if (c >= 0x20 && c < 0x20 + 4 * USB_NEP) { fifo_wr(s, (int)((c - 0x20) >> 2), size, val); return; }
+        if (c >= 0x20 && c < 0x20 + 4 * USB_NEP) {
+            int ep = (int)((c - 0x20) >> 2);
+            fifo_wr(s, ep, (int)(c & 3), size, val);
+            return;
+        }
         core_wr(s, c, size, val);
         irq_eval(s, 0);
         return;
@@ -551,6 +571,16 @@ static int host_ctl_step(c6x_sys *s, int *ok)
         return 1;
     case CT_DIN:
         if (e->txcsr & 2) {
+            if (u->ep0_lanes_model && u->ep0_lane_bad) {
+                ulog(s, "EP0 descriptor data written to wrong FIFO lanes -> STALL");
+                u->ep0_lane_bad = 0;
+                u->ep0_lanes_fatal = 1;
+                e->txcsr |= 4;
+                e->txcsr &= (uint16_t)~2u;
+                core_tx_int(s, 0);
+                u->ctl_phase = CT_IDLE;
+                return 1;
+            }
             int n = (int)e->txn;
             if (u->ctl_len + n > (int)sizeof u->ctl_buf) n = (int)sizeof u->ctl_buf - u->ctl_len;
             memcpy(u->ctl_buf + u->ctl_len, e->tx, (size_t)n);
@@ -624,6 +654,11 @@ static void host_enum(c6x_sys *s)
     uint8_t req[8];
     int ok;
 
+    if (u->ep0_lanes_fatal) {
+        ulog(s, "enumeration failed: EP0 FIFO byte lanes");
+        u->state = H_RUN;
+        return;
+    }
     if (u->ep0_prereq) {
         u->ep0_prereq_missing = ep0_prereq_mask(u);
         if (u->ep0_prereq_missing) {
@@ -1027,6 +1062,8 @@ void usb_report(c6x_sys *s, FILE *f)
         fprintf(f, "USB CSR0 servo model: on, RXPKTRDY bit0 required with SERV_RXPKTRDY\n");
     if (u->ep0_prereq)
         fprintf(f, "USB EP0 prerequisites: on, SETUP delivery mask %02X (0 = all met)\n", u->ep0_prereq_missing);
+    if (u->ep0_lanes_model)
+        fprintf(f, "USB EP0 FIFO lanes: on, lane_bad=%d\n", u->ep0_lane_bad);
     if (u->iso_ep || u->iso_packets)
         fprintf(f, "UAC iso IN: ep %02X, MPS %d, alt %d, streaming %d, packets %u, bytes %u, underruns %u\n",
                 (unsigned)(0x80u | (uint32_t)u->iso_ep), u->iso_mps, u->iso_alt, u->iso_enabled,

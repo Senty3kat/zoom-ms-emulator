@@ -22,6 +22,7 @@
      -powerhsmode         optional: report POWER.HSMODE bit4 as read-only status
      -csr0rxbit           optional: require RXPKTRDY bit0 with SERV_RXPKTRDY (A/B with 0x40 vs 0x41)
      -ep0prereq           optional: withhold SETUP until SOFTCONN/INTRUSBE/INTRTXE/INTRRXE/FLUSHFIFO are set
+     -ep0fifolanes        optional: require EP0 FIFO byte lanes 0x20/21/22/23 in order
      -sdramgarbage        optional: fill SDRAM with 0xA5A5A5A5 before AIS load (catch missing .bss zero-init)
      -usbphystrict       optional TI Example 31-1 ordering checks (diagnostic only)
      -sysex MS:HEX       send a MIDI/SysEx message at MS (implies -usb), e.g. 4000:F07E000601F7
@@ -415,6 +416,9 @@ int main(int argc, char **argv)
                 }
                 s->usb.vbus_level = (int)lv;
             }
+        } else if (!strcmp(a, "-ep0fifolanes")) {
+            if (!s->usb.enabled) usb_init(s);
+            s->usb.ep0_lanes_model = 1;
         } else if (!strcmp(a, "-ep0prereq")) {
             if (!s->usb.enabled) usb_init(s);
             s->usb.ep0_prereq = 1;
