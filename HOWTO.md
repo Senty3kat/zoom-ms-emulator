@@ -304,6 +304,7 @@ python -I tools/overclock.py run/cdr/129_main_OS.bin run/oc360/129_main_OS.bin -
 | `-ep0prereq` | опционально задерживать SETUP, пока не выполнены `POWER.SOFTCONN`, `INTRUSBE`, `INTRTXE`, `INTRRXE` и `CSR0.FLUSHFIFO`; воспроизводит железный симптом `ep0_setup_count=0` | usb.txt/stdout |
 | `-ep0fifolanes` | опционально требовать байтовые lanes FIFO0 `0x20/21/22/23` с начала каждого IN-пакета; старая запись всех байтов в `0x20` даёт STALL | usb.txt/stdout |
 | `-reattachgap` | опционально блокировать перечисление, если пауза `POWER.SOFTCONN off→on` больше 2 мс; железо при 1400 мс удаляет устройство, сток держит 0.186 мс | usb.txt/stdout |
+| `-usbwrapclk` | опционально блокировать USB-attach, если `SYSCLK2` выше стоковых 150 МГц (ядро 408 МГц даёт 204 МГц); эмулятор иначе не моделирует влияние тактов на USB wrapper | usb.txt/stdout |
 | `-muxstrict` | учитывать владельца CS через PINMUX7: LCD требует mux 8, flash — 0/1; блокированные слова считаются. Рекомендуется для всех bare-metal прогонов | stdout |
 | `-muxhalt` | то же, что `-muxstrict`, плюс fatal при LCD-записи с неправильным mux; быстро ловит firmware, который не вернул LCD mux после flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | опциональные отказы SPI flash: `wp` игнорирует WREN, `wip` не сбрасывает WIP, `rx` не готовит SPIBUF RX, `long` возвращает FF в длинном чтении, `mux` блокирует flash-слово при чужом CS/mux; по умолчанию выключено | stdout |
@@ -727,6 +728,7 @@ overhead, not useful effect work.
 | `-ep0prereq` | optional: withhold SETUP until `POWER.SOFTCONN`, `INTRUSBE`, `INTRTXE`, `INTRRXE` and `CSR0.FLUSHFIFO` are present; reproduces the hardware `ep0_setup_count=0` symptom | usb.txt/stdout |
 | `-ep0fifolanes` | optional: require EP0 FIFO byte lanes 0x20/21/22/23 from the start of every IN packet; old all-bytes-to-0x20 writes cause STALL | usb.txt/stdout |
 | `-reattachgap` | optional: block enumeration when the POWER.SOFTCONN off-to-on gap exceeds 2 ms; hardware removes the device at 1400 ms while stock uses 0.186 ms | usb.txt/stdout |
+| `-usbwrapclk` | optional: block USB attach when SYSCLK2 exceeds the stock 150 MHz (a 408 MHz core gives 204 MHz); by default the emulator does not model clock effects on the USB wrapper | usb.txt/stdout |
 | `-muxstrict` | honor PINMUX7 CS ownership; recommended for bare-metal runs | stdout |
 | `-muxhalt` | fatal on an LCD write with the wrong mux, catches firmware that does not restore LCD mux after flash_read | stdout |
 | `-flashfault wp,wip,rx,long,mux` | optional SPI flash faults; disabled by default | stdout |

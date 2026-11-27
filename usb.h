@@ -63,6 +63,8 @@ typedef struct c6x_usb {
     uint32_t reattach_gaps_seen; /* number of off->on transitions observed */
     uint32_t reattach_gaps_bad;  /* off->on gaps longer than the allowed window */
     int reattach_rejected;       /* current too-long reattach blocks enumeration */
+    int usbwrapclk_model;        /* optional: require stock SYSCLK2 (150 MHz) at USB wrapper */
+    int usbwrapclk_bad;          /* SYSCLK2 above the stock value seen */
     int line;                    /* interrupt line level last reported */
     /* MUSB core */
     uint8_t faddr, power, index, testmode, devctl, intrusbe;

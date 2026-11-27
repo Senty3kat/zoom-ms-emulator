@@ -1030,6 +1030,8 @@ c6x_sys *sys_create(void)
     s->usb.reattach_gaps_seen = 0;
     s->usb.reattach_gaps_bad = 0;
     s->usb.reattach_rejected = 0;
+    s->usb.usbwrapclk_model = 0;
+    s->usb.usbwrapclk_bad = 0;
     s->psc1_transition_until = 0;
     s->usbphy_last_cfgchip2_rd = s->usbphy_last_mdstat1_rd = s->usbphy_last_ptstat_rd = 0;
     s->usbphy_have_cfgchip2_rd = s->usbphy_have_mdstat1_rd = s->usbphy_have_ptstat_rd = 0;
