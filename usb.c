@@ -285,7 +285,12 @@ static uint8_t core_rd8(c6x_sys *s, uint32_t c)
     case 0x0D: return (uint8_t)(u->frame >> 8);
     case 0x0E: return u->index;
     case 0x0F: return u->testmode;
-    case 0x60: return (uint8_t)((u->devctl & ~0x18u) | ((usb_effective_vbus(u) & 3u) << 3));
+    case 0x60:
+        /* In the full-path model the firmware writes DEVCTL=0x99 at init; that
+           written value is the readback on hardware (SESSION=1, BDEVICE=1).
+           The effective VBUS level is checked separately from this readback. */
+        if (u->full_path) return u->devctl;
+        return (uint8_t)((u->devctl & ~0x18u) | ((usb_effective_vbus(u) & 3u) << 3));
     }
     if (c >= 0x10 && c < 0x20) return u->index < USB_NEP ? epreg_rd8(u, u->index, (int)(c - 0x10)) : 0;
     if (c >= 0x100 && c < 0x100 + 16 * USB_NEP) return epreg_rd8(u, (int)((c - 0x100) >> 4), (int)(c & 15));

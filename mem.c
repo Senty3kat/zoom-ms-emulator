@@ -147,9 +147,32 @@ uint32_t mem_rd(c6x_mem *m, uint32_t addr, int size)
     return 0;
 }
 
+/* Flat SDRAM here has no notion of the stock arena/looper reservations.
+   Report writes into those zones once per run so a successful emulation is
+   never mistaken for a hardware-safe pool placement. Always on, no flag. */
+static void zone_warn(c6x_mem *m, uint32_t addr)
+{
+    if (addr >= 0xC022D000u && addr < 0xC0636980u) {
+        m->zone_arena_hits++;
+        if (!m->zone_warned_arena) {
+            m->zone_warned_arena = 1;
+            fprintf(stderr, "SDRAM ZONE WARN: write %08X into stock effect arenas "
+                            "(C022D000..C0636980); flat map cannot model reservations\n", addr);
+        }
+    } else if (addr >= 0xC0636980u && addr < 0xC0800000u) {
+        m->zone_looper_hits++;
+        if (!m->zone_warned_looper) {
+            m->zone_warned_looper = 1;
+            fprintf(stderr, "SDRAM ZONE WARN: write %08X into looper/reserved region "
+                            "(C0636980..C07FFFFF); emulation pass is not hardware-safe\n", addr);
+        }
+    }
+}
+
 void mem_wr(c6x_mem *m, uint32_t addr, int size, uint32_t val)
 {
     uint8_t *p = mem_ptr(m, addr);
+    zone_warn(m, addr);
     if (p) stale_touch(m, addr, (uint32_t)size);
     if (m->sys && m->sys->bootlogf) bootlog_hook(m->sys, addr, size, val);
     if (addr >= m->wwatch_lo && addr < m->wwatch_hi && m->on_wwatch) m->on_wwatch(m->sys, addr, size, val);

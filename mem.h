@@ -43,6 +43,11 @@ typedef struct c6x_mem {
     uint8_t *stale_snap;
     uint8_t stale_armed, stale_active;
     uint64_t stale_fetches;
+
+    /* default (no flag) warning: flat SDRAM map cannot model arena/looper
+       reservations, so a pass here is not proof of hardware safety */
+    uint8_t zone_warned_arena, zone_warned_looper;
+    uint32_t zone_arena_hits, zone_looper_hits;
 } c6x_mem;
 
 void mem_init(c6x_mem *m);
