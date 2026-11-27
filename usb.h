@@ -47,6 +47,12 @@ typedef struct c6x_usb {
     int usbrefclk_model;         /* optional: require PINMUX9[11:8]=4h (USB_REFCLKIN) */
     int usbphy_polarity_model;   /* optional: require CFGCHIP2 DATPOL=1 and PHY_PLLON=1 */
     uint32_t cfgchip2;           /* last CFGCHIP2 write */
+    int suspend_model;           /* optional: model POWER.SUSPENDM (bit1) and RESUME release */
+    int suspend_active;          /* SUSPENDM set: SETUP is withheld until cleared */
+    uint64_t suspend_since;      /* cycle when SUSPENDM was set */
+    uint32_t resume_pulses;      /* number of POWER.RESUME pulses observed */
+    uint64_t resume_last_ms;     /* duration of the last RESUME pulse in ms */
+    uint64_t resume_on_at;       /* cycle when POWER.RESUME went high */
     int power_hsmode;            /* optional: report POWER.HSMODE bit4 as read-only status */
     int csr0_rxbit_required;     /* optional: require RXPKTRDY bit0 with SERV_RXPKTRDY */
     int ep0_prereq;              /* optional: gate SETUP delivery on stock EP0 prerequisites */

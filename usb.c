@@ -260,7 +260,11 @@ static uint8_t core_rd8(c6x_sys *s, uint32_t c)
     uint8_t v;
     switch (c) {
     case 0x00: return u->faddr;
-    case 0x01: return (uint8_t)(u->power | (u->power_hsmode ? 0x10u : 0u));
+    case 0x01: {
+        uint8_t v = (uint8_t)(u->power | (u->power_hsmode ? 0x10u : 0u));
+        if (u->suspend_model && u->suspend_active) v |= 0x02u;   /* SUSPENDM is status */
+        return v;
+    }
     case 0x02: v = (uint8_t)u->intrtx; u->intrtx &= 0xFF00; return v;
     case 0x03: v = (uint8_t)(u->intrtx >> 8); u->intrtx &= 0x00FF; return v;
     case 0x04: v = (uint8_t)u->intrrx; u->intrrx &= 0xFF00; return v;
@@ -269,7 +273,13 @@ static uint8_t core_rd8(c6x_sys *s, uint32_t c)
     case 0x07: return (uint8_t)(u->intrtxe >> 8);
     case 0x08: return (uint8_t)u->intrrxe;
     case 0x09: return (uint8_t)(u->intrrxe >> 8);
-    case 0x0A: v = u->intrusb; u->intrusb = 0; return v;
+    case 0x0A:
+        v = u->intrusb; u->intrusb = 0;
+        if (u->suspend_model && u->suspend_active) {
+            u->suspend_active = 0;
+            ulog(s, "SUSPENDM cleared by INTRUSB read");
+        }
+        return v;
     case 0x0B: return u->intrusbe;
     case 0x0C: return (uint8_t)u->frame;
     case 0x0D: return (uint8_t)(u->frame >> 8);
@@ -327,6 +337,27 @@ static void core_wr(c6x_sys *s, uint32_t c, int size, uint32_t v)
                 }
             }
             if ((b ^ u->power) & 0x80) ulog(s, "POWER.ISOUPDATE %s", (b & 0x80) ? "on" : "off");
+            if (u->suspend_model) {
+                /* RESUME (bit2) clears SUSPENDM; its pulse width is logged in ms. */
+                if ((b & 0x04u) && !u->resume_on_at) {
+                    u->resume_on_at = cpu_now(&s->cpu);
+                } else if (!(b & 0x04u) && u->resume_on_at) {
+                    u->resume_last_ms = (cpu_now(&s->cpu) - u->resume_on_at) * 1000u / s->cpu_hz;
+                    u->resume_on_at = 0;
+                    u->resume_pulses++;
+                    ulog(s, "RESUME pulse %llu ms", (unsigned long long)u->resume_last_ms);
+                }
+                if ((b & 0x04u) && u->suspend_active) {
+                    u->suspend_active = 0;
+                    ulog(s, "SUSPENDM cleared by RESUME");
+                }
+                /* SUSPENDM (bit1) is controller status, not a firmware setting. */
+                if ((b & 0x02u) && !u->suspend_active) {
+                    u->suspend_active = 1;
+                    u->suspend_since = cpu_now(&s->cpu);
+                    ulog(s, "SUSPENDM set");
+                }
+            }
             u->power = (uint8_t)(b & ~0x10u);  /* bit4 HSMODE is status, not written */
             break;
         case 0x06: u->intrtxe = (uint16_t)((u->intrtxe & 0xFF00) | b); break;
@@ -685,6 +716,14 @@ static void host_enum(c6x_sys *s)
     uint8_t req[8];
     int ok;
 
+    if (u->suspend_model && u->suspend_active) {
+        if (!u->ep0_prereq_logged) {
+            ulog(s, "SETUP withheld: SUSPENDM active (read INTRUSB or set POWER.RESUME)");
+            u->ep0_prereq_logged = 1;
+        }
+        u->next_tick = cpu_now(&s->cpu) + us(s, 1000);
+        return;
+    }
     if (u->ep0_lanes_fatal) {
         ulog(s, "enumeration failed: EP0 FIFO byte lanes");
         u->state = H_RUN;
@@ -1123,6 +1162,9 @@ void usb_report(c6x_sys *s, FILE *f)
     if (u->power_hsmode)
         fprintf(f, "USB POWER HSMODE model: on, reported POWER=%02X, attach uses SOFTCONN only\n",
                 (unsigned)(core_rd8(s, 0x01) & 0xFF));
+    if (u->suspend_model)
+        fprintf(f, "USB suspend model: on, active=%d, pulses=%u, last %llu ms\n",
+                u->suspend_active, u->resume_pulses, (unsigned long long)u->resume_last_ms);
     if (u->csr0_rxbit_required)
         fprintf(f, "USB CSR0 servo model: on, RXPKTRDY bit0 required with SERV_RXPKTRDY\n");
     if (u->ep0_prereq)
