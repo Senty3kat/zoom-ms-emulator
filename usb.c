@@ -1183,8 +1183,15 @@ void usb_report(c6x_sys *s, FILE *f)
     fprintf(f, "USB: %s, %s, MIDI sent %d/%d, received %d message(s)\n", st[u->state],
             u->configured ? "configured" : "not configured", u->outpos, u->nout, u->nin);
     int level = usb_effective_vbus(u);
+    /* In full-path mode the DEVCTL readback is the written 0x99 (VBUS bits
+       already 3h); the effective level lives in usb_effective_vbus(). Print
+       them separately so the log cannot be read as "DEVCTL shows VBUS 1h". */
+    if (!u->full_path)
     fprintf(f, "USB VBUS: level %d (DEVCTL bits 4:3), VBusValid %s, DEVCTL %02X\n",
             level, level == 3 ? "yes" : "no", core_rd8(s, 0x60));
+    else
+        fprintf(f, "USB VBUS: full-path effective level %dh (model input, not DEVCTL bits 4:3), DEVCTL %02X shows VBUS %dh\n",
+                level, core_rd8(s, 0x60), (core_rd8(s, 0x60) >> 3) & 3);
     if (u->vbus_sense_model)
         fprintf(f, "USB VBUS sense model: on, CFGCHIP2.VBUSSENSE=%d, effective level %d\n",
                 u->usb0_vbussense, level);
